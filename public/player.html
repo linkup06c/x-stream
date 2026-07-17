@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 
 <head>
@@ -8,22 +7,22 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-
-<title>X-Stream TV Player</title>
-
+<title>X-Stream Universal Player</title>
 
 <style>
+/* =====================================
+   X-STREAM UNIVERSAL PLAYER
+   CSS FINAL
+===================================== */
 
 
 html,
 body{
 
 margin:0;
-
 padding:0;
 
 width:100%;
-
 height:100%;
 
 background:#000;
@@ -38,19 +37,19 @@ color:#fff;
 
 
 
+/* =====================================
+   VÍDEO
+===================================== */
 
-/* VIDEO */
 
 #mediaVideo{
 
 position:fixed;
 
 top:0;
-
 left:0;
 
 width:100%;
-
 height:100%;
 
 background:#000;
@@ -65,11 +64,110 @@ z-index:10;
 
 
 
+/* =====================================
+   ÁUDIO
+===================================== */
 
-/* STATUS */
+
+#mediaAudio{
+
+display:none;
+
+}
+
+
+
+#audioInfo{
+
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+background:#000;
+
+display:none;
+
+align-items:center;
+
+justify-content:center;
+
+flex-direction:column;
+
+z-index:20;
+
+}
+
+
+
+#audioInfo:before{
+
+content:"♫";
+
+font-size:120px;
+
+margin-bottom:30px;
+
+}
+
+
+
+#audioTitle{
+
+font-size:32px;
+
+font-weight:bold;
+
+text-align:center;
+
+}
+
+
+
+
+
+/* =====================================
+   IMAGEM
+===================================== */
+
+
+#mediaImage{
+
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+
+object-fit:contain;
+
+
+background:#000;
+
+
+display:none;
+
+
+z-index:15;
+
+}
+
+
+
+
+
+/* =====================================
+   STATUS
+===================================== */
+
 
 #status{
-
 
 position:fixed;
 
@@ -88,10 +186,36 @@ padding:15px 20px;
 border-radius:10px;
 
 
-font-size:22px;
-
-
 z-index:9999;
+
+
+transition:.5s;
+
+
+}
+
+
+
+#statusTitle{
+
+
+font-size:24px;
+
+
+font-weight:bold;
+
+
+margin-bottom:8px;
+
+
+}
+
+
+
+#statusMessage{
+
+
+font-size:18px;
 
 
 }
@@ -99,7 +223,9 @@ z-index:9999;
 
 
 
-/* AGUARDANDO */
+/* =====================================
+   TELA AGUARDANDO
+===================================== */
 
 
 #waiting{
@@ -109,12 +235,10 @@ position:fixed;
 
 
 top:0;
-
 left:0;
 
 
 width:100%;
-
 height:100%;
 
 
@@ -133,14 +257,13 @@ justify-content:center;
 flex-direction:column;
 
 
-font-size:28px;
-
-
 z-index:5000;
 
 
-}
+font-size:28px;
 
+
+}
 
 
 
@@ -148,7 +271,6 @@ z-index:5000;
 
 
 width:55px;
-
 
 height:55px;
 
@@ -169,7 +291,6 @@ margin-bottom:25px;
 
 
 }
-
 
 
 
@@ -195,8 +316,9 @@ transform:rotate(360deg);
 
 
 
-
-/* ERRO */
+/* =====================================
+   ERRO
+===================================== */
 
 
 #errorBox{
@@ -206,12 +328,10 @@ position:fixed;
 
 
 top:0;
-
 left:0;
 
 
 width:100%;
-
 height:100%;
 
 
@@ -230,19 +350,63 @@ justify-content:center;
 flex-direction:column;
 
 
-font-size:28px;
+text-align:center;
 
 
 z-index:20000;
-
-
-text-align:center;
 
 
 }
 
 
 
+#errorTitle{
+
+
+font-size:40px;
+
+
+margin-bottom:20px;
+
+
+}
+
+
+
+#errorMessage{
+
+
+font-size:22px;
+
+
+max-width:80%;
+
+
+}
+
+
+
+
+/* =====================================
+   CONTROLES REMOTOS
+===================================== */
+
+
+button,
+video,
+audio,
+img{
+
+outline:none;
+
+}
+
+
+
+/* =====================================
+   TV ANTIGA
+   EVITAR ANIMAÇÕES PESADAS
+===================================== */
 
 
 *{
@@ -251,104 +415,440 @@ text-align:center;
 
 }
 
-
-
 </style>
-
 
 </head>
 
 
-
 <body>
 
-
-
+<!-- VÍDEO -->
 
 <video
-
 id="mediaVideo"
-
 autoplay
-
 playsinline
-
 webkit-playsinline
-
 preload="auto">
-
 </video>
 
 
+<!-- ÁUDIO -->
+
+<audio
+id="mediaAudio"
+autoplay
+preload="auto">
+</audio>
 
 
+<!-- IMAGEM -->
 
-<div id="status">
+<img
+id="mediaImage">
 
-X-Stream<br>
-
-Conectando...
-
-</div>
-
-
-
-
-
-<div id="waiting">
-
-
-<div class="loader"></div>
-
-
-Aguardando transmissão...
-
-
-</div>
-
-
-
-
-
-
-<div id="errorBox">
-
-
-Erro ao reproduzir vídeo
-
-
-</div>
 <script>
-
-
 // =====================================
-// X-STREAM PLAYER ENGINE
-// BASE COMPATÍVEL TV / WEBVIEW
+// X-STREAM INTELLIGENT MEDIA DETECTOR
+// IDENTIFICA VIDEO / AUDIO / IMAGEM
+// SEM DEPENDER DA EXTENSÃO
 // =====================================
 
 
-var mediaVideo =
-document.getElementById("mediaVideo");
+var mediaVideo = document.getElementById("mediaVideo");
+
+var mediaAudio = document.getElementById("mediaAudio");
+
+var mediaImage = document.getElementById("mediaImage");
 
 
-var status =
-document.getElementById("status");
-
-
-var waiting =
-document.getElementById("waiting");
-
-
-var errorBox =
-document.getElementById("errorBox");
-
-
+var tipoAtual = "";
 
 var urlAtual = "";
 
-var ultimaURLServidor = "";
 
 
+// =====================================
+// LIMPAR PLAYERS
+// =====================================
+
+function limparMidia(){
+
+
+    try{
+
+        mediaVideo.pause();
+
+        mediaVideo.removeAttribute("src");
+
+        mediaVideo.load();
+
+
+    }catch(e){}
+
+
+
+    try{
+
+        mediaAudio.pause();
+
+        mediaAudio.removeAttribute("src");
+
+        mediaAudio.load();
+
+
+    }catch(e){}
+
+
+
+    mediaImage.removeAttribute("src");
+
+
+}
+
+
+
+// =====================================
+// RECEBE UMA URL
+// =====================================
+
+function receberMidia(url){
+
+
+    if(!url){
+
+        return;
+
+    }
+
+
+    if(url == urlAtual){
+
+        return;
+
+    }
+
+
+    urlAtual = url;
+
+
+
+    limparMidia();
+
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Analisando mídia..."
+    );
+
+
+
+    /*
+       Primeiro tenta vídeo,
+       porque a maioria dos links
+       do seu sistema são streams.
+    */
+
+
+    tentarVideo(url);
+
+
+
+}
+
+
+
+// =====================================
+// TENTAR VÍDEO
+// =====================================
+
+function tentarVideo(url){
+
+
+    var confirmado = false;
+
+
+    mediaVideo.src = url;
+
+    mediaVideo.load();
+
+
+
+    mediaVideo.oncanplay = function(){
+
+
+        if(confirmado){
+
+            return;
+
+        }
+
+
+        confirmado=true;
+
+
+        tipoAtual="video";
+
+
+        mostrarVideo();
+
+
+
+        iniciarVideo();
+
+
+
+    };
+
+
+
+    mediaVideo.onerror = function(){
+
+
+        if(confirmado){
+
+            return;
+
+        }
+
+
+        tentarAudio(url);
+
+
+    };
+
+
+}
+
+
+
+// =====================================
+// TENTAR ÁUDIO
+// =====================================
+
+function tentarAudio(url){
+
+
+    var confirmado=false;
+
+
+    mediaAudio.src=url;
+
+
+    mediaAudio.load();
+
+
+
+    mediaAudio.oncanplay=function(){
+
+
+        if(confirmado){
+
+            return;
+
+        }
+
+
+        confirmado=true;
+
+
+        tipoAtual="audio";
+
+
+        mostrarAudio();
+
+
+
+        mediaAudio.play();
+
+
+
+    };
+
+
+
+    mediaAudio.onerror=function(){
+
+
+        if(confirmado){
+
+            return;
+
+        }
+
+
+        tentarImagem(url);
+
+
+
+    };
+
+
+}
+
+
+
+
+// =====================================
+// TENTAR IMAGEM
+// =====================================
+
+function tentarImagem(url){
+
+
+    var img=new Image();
+
+
+
+    img.onload=function(){
+
+
+        tipoAtual="image";
+
+
+        mediaImage.src=url;
+
+
+        mostrarImagem();
+
+
+    };
+
+
+
+    img.onerror=function(){
+
+
+        mostrarErro(
+            "Formato não suportado"
+        );
+
+
+    };
+
+
+
+    img.src=url;
+
+
+
+}
+
+
+// =====================================
+// CONTROLE DE EXIBIÇÃO
+// =====================================
+
+
+function esconderTodos(){
+
+
+    mediaVideo.style.display="none";
+
+    mediaAudio.style.display="none";
+
+    mediaImage.style.display="none";
+
+
+}
+
+
+
+// =====================================
+// MOSTRAR VÍDEO
+// =====================================
+
+
+function mostrarVideo(){
+
+
+    esconderTodos();
+
+
+    mediaVideo.style.display="block";
+
+
+}
+
+
+
+// =====================================
+// MOSTRAR ÁUDIO
+// =====================================
+
+
+function mostrarAudio(){
+
+
+    esconderTodos();
+
+
+    mediaAudio.style.display="block";
+
+
+}
+
+
+
+// =====================================
+// MOSTRAR IMAGEM
+// =====================================
+
+
+function mostrarImagem(){
+
+
+    esconderTodos();
+
+
+    mediaImage.style.display="block";
+
+
+}
+
+
+
+// =====================================
+// INICIAR VÍDEO
+// =====================================
+
+
+function iniciarVideo(){
+
+
+    var tentativa = mediaVideo.play();
+
+
+
+    if(tentativa !== undefined){
+
+
+        tentativa.then(function(){
+
+
+            esconderStatus();
+
+
+        }).catch(function(){
+
+
+            setTimeout(function(){
+
+
+                iniciarVideo();
+
+
+            },1000);
+
+
+        });
+
+
+    }
+
+
+}
 
 
 
@@ -358,14 +858,34 @@ var ultimaURLServidor = "";
 // =====================================
 
 
-function mostrarStatus(msg){
+function mostrarStatus(titulo,texto){
 
 
-status.innerHTML =
-"X-Stream<br>"+msg;
+    var box =
+    document.getElementById("status");
 
 
-status.style.display="block";
+    if(!box){
+
+        return;
+
+    }
+
+
+
+    box.style.display="block";
+
+
+    document.getElementById(
+        "statusTitle"
+    ).innerHTML=titulo;
+
+
+
+    document.getElementById(
+        "statusMessage"
+    ).innerHTML=texto;
+
 
 
 }
@@ -375,170 +895,20 @@ status.style.display="block";
 function esconderStatus(){
 
 
-status.style.display="none";
+    var box =
+    document.getElementById("status");
+
+
+    if(box){
+
+
+        box.style.display="none";
+
+
+    }
 
 
 }
-
-
-
-
-
-
-
-
-// =====================================
-// CARREGAR VÍDEO
-// =====================================
-
-
-function receberVideo(url){
-
-
-
-if(!url){
-
-return;
-
-}
-
-
-
-if(url === urlAtual){
-
-return;
-
-}
-
-
-
-urlAtual=url;
-
-
-
-mostrarStatus(
-"Carregando vídeo..."
-);
-
-
-
-waiting.style.display="flex";
-
-mediaVideo.style.display="none";
-
-
-
-try{
-
-
-mediaVideo.pause();
-
-
-mediaVideo.removeAttribute("src");
-
-
-mediaVideo.load();
-
-
-
-}catch(e){}
-
-
-
-
-
-mediaVideo.src=url;
-
-
-mediaVideo.load();
-
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// VÍDEO PRONTO
-// =====================================
-
-
-mediaVideo.oncanplay=function(){
-
-
-
-mediaVideo.style.display="block";
-
-
-waiting.style.display="none";
-
-
-
-var tentativa =
-mediaVideo.play();
-
-
-
-if(tentativa){
-
-
-tentativa.then(function(){
-
-
-esconderStatus();
-
-
-}).catch(function(){
-
-
-mostrarStatus(
-"Aguardando reprodução..."
-);
-
-
-});
-
-
-}
-
-
-
-};
-
-
-
-
-
-
-
-
-
-// =====================================
-// TOCANDO
-// =====================================
-
-
-mediaVideo.onplaying=function(){
-
-
-waiting.style.display="none";
-
-
-esconderStatus();
-
-
-};
-
-
-
-
-
 
 
 
@@ -548,23 +918,68 @@ esconderStatus();
 // =====================================
 
 
-mediaVideo.onerror=function(){
+function mostrarErro(msg){
+
+
+    var erro =
+    document.getElementById("errorBox");
+
+
+    if(erro){
+
+
+        erro.style.display="flex";
+
+
+        document.getElementById(
+            "errorMessage"
+        ).innerHTML=msg;
+
+
+    }
+
+
+}
 
 
 
-errorBox.style.display="flex";
+// =====================================
+// EVENTOS DO PLAYER
+// =====================================
 
 
-mostrarStatus(
-"Erro no vídeo"
-);
 
+mediaVideo.onplaying=function(){
+
+
+    esconderStatus();
 
 
 };
 
 
 
+mediaAudio.onplaying=function(){
+
+
+    esconderStatus();
+
+
+};
+
+
+
+
+mediaVideo.onwaiting=function(){
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Carregando..."
+    );
+
+
+};
 
 
 
@@ -572,186 +987,95 @@ mostrarStatus(
 
 // =====================================
 // BUSCAR SERVIDOR
-// IGUAL PLAYER ANTIGO
 // =====================================
+
+
+var ultimaURL="";
+
 
 
 function verificarServidor(){
 
 
 
-var xhr =
-new XMLHttpRequest();
+    var xhr =
+    new XMLHttpRequest();
 
 
 
-xhr.open(
+    xhr.open(
+        "GET",
+        "/status",
+        true
+    );
 
-"GET",
 
-"/status",
 
-true
+    xhr.onreadystatechange=function(){
 
-);
 
+        if(xhr.readyState==4 &&
+           xhr.status==200){
 
 
+            try{
 
 
-xhr.onreadystatechange=function(){
+                var dados =
+                JSON.parse(
+                    xhr.responseText
+                );
 
 
 
-if(
+                if(
+                    dados.ativo &&
+                    dados.video
+                ){
 
-xhr.readyState===4 &&
 
-xhr.status===200
 
-){
+                    if(
+                    dados.video != ultimaURL
+                    ){
 
 
+                        ultimaURL =
+                        dados.video;
 
-try{
 
 
+                        receberMidia(
+                            dados.video
+                        );
 
-var dados =
-JSON.parse(
-xhr.responseText
-);
 
+                    }
 
 
+                }
 
 
-var url="";
 
+            }catch(e){
 
 
 
+            }
 
-// SERVIDOR NOVO
 
-if(
+        }
 
-dados.fila &&
 
-dados.fila.length > 0
+    };
 
-){
 
 
-
-var item =
-dados.fila[dados.atual];
-
-
-
-if(item){
-
-url=item.url;
-
-}
-
-
-
-}
-
-
-
-
-
-// COMPATIBILIDADE ANTIGO
-
-if(
-
-!url && dados.video
-
-){
-
-
-url=dados.video;
-
-
-}
-
-
-
-
-
-
-
-if(
-
-dados.ativo && url
-
-){
-
-
-
-if(
-
-url !== ultimaURLServidor
-
-){
-
-
-
-ultimaURLServidor=url;
-
-
-receberVideo(url);
+    xhr.send();
 
 
 
 }
-
-
-
-}else{
-
-
-
-mostrarStatus(
-"Aguardando transmissão..."
-);
-
-
-
-}
-
-
-
-
-}catch(e){
-
-
-
-}
-
-
-
-
-}
-
-
-
-};
-
-
-
-xhr.send();
-
-
-
-}
-
-
-
-
-
 
 
 
@@ -761,7 +1085,8 @@ xhr.send();
 
 
 mostrarStatus(
-"Conectando..."
+    "X-Stream",
+    "Conectando..."
 );
 
 
@@ -771,30 +1096,56 @@ verificarServidor();
 
 
 setInterval(
-
-verificarServidor,
-
-3000
-
+    verificarServidor,
+    3000
 );
+
+
+
+
 // =====================================
-// QUANDO TERMINAR O VÍDEO
+// RECUPERAÇÃO AUTOMÁTICA
 // =====================================
 
 
-mediaVideo.onended=function(){
+function recuperarPlayer(){
 
 
-mostrarStatus(
-"Próximo vídeo..."
-);
+    if(urlAtual){
+
+
+        mostrarStatus(
+            "X-Stream",
+            "Reconectando..."
+        );
+
+
+        receberMidia(
+            urlAtual
+        );
+
+
+    }
+
+
+}
 
 
 
-enviarComando(
-"next"
-);
 
+mediaVideo.onerror=function(){
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Tentando recuperar vídeo..."
+    );
+
+
+    setTimeout(
+        recuperarPlayer,
+        3000
+    );
 
 
 };
@@ -802,105 +1153,47 @@ enviarComando(
 
 
 
+mediaAudio.onerror=function(){
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Tentando recuperar áudio..."
+    );
+
+
+    setTimeout(
+        recuperarPlayer,
+        3000
+    );
+
+
+};
+
 
 
 
 // =====================================
-// COMANDO PARA SERVIDOR
+// HLS (.m3u8)
 // =====================================
 
 
-function enviarComando(acao){
+function suportaHLS(){
 
 
-
-var xhr =
-new XMLHttpRequest();
-
+    var video =
+    document.createElement("video");
 
 
-xhr.open(
-
-"POST",
-
-"/controle",
-
-true
-
-);
-
-
-
-xhr.setRequestHeader(
-
-"Content-Type",
-
-"application/json"
-
-);
-
-
-
-xhr.send(
-
-JSON.stringify({
-
-acao:acao
-
-})
-
-);
-
+    return !!(
+        video.canPlayType &&
+        video.canPlayType(
+        "application/vnd.apple.mpegurl"
+        )
+    );
 
 
 }
-
-
-
-
-
-
-
-
-// =====================================
-// PRÓXIMO
-// =====================================
-
-
-function proximo(){
-
-
-enviarComando(
-"next"
-);
-
-
-}
-
-
-
-
-
-
-
-
-// =====================================
-// ANTERIOR
-// =====================================
-
-
-function anterior(){
-
-
-enviarComando(
-"previous"
-);
-
-
-}
-
-
-
 
 
 
@@ -914,73 +1207,68 @@ enviarComando(
 document.onkeydown=function(e){
 
 
-
-var tecla =
-e.keyCode;
+    var tecla=e.keyCode;
 
 
 
-switch(tecla){
+    // ENTER
+
+    if(tecla==13){
+
+
+        if(tipoAtual=="video"){
+
+
+            iniciarVideo();
+
+
+        }
+
+
+    }
 
 
 
-case 34:
+    // PAUSAR / CONTINUAR
 
-// PAGE DOWN
-
-proximo();
-
-break;
+    if(tecla==32){
 
 
-
-case 33:
-
-// PAGE UP
-
-anterior();
-
-break;
+        if(tipoAtual=="video"){
 
 
+            if(mediaVideo.paused){
 
-}
+                mediaVideo.play();
 
+            }else{
 
+                mediaVideo.pause();
 
-};
-
-
-
-
-
+            }
 
 
-
-// =====================================
-// CLIQUE NO VÍDEO
-// =====================================
+        }
 
 
-mediaVideo.onclick=function(){
+        if(tipoAtual=="audio"){
 
 
+            if(mediaAudio.paused){
 
-if(mediaVideo.paused){
+                mediaAudio.play();
 
+            }else{
 
-mediaVideo.play();
+                mediaAudio.pause();
 
-
-
-}else{
-
-
-mediaVideo.pause();
+            }
 
 
+        }
 
-}
+
+    }
 
 
 
@@ -989,24 +1277,21 @@ mediaVideo.pause();
 
 
 
-
-
-
 // =====================================
-// INTERNET
+// INTERNET RECONECTADA
 // =====================================
 
 
 window.ononline=function(){
 
 
-mostrarStatus(
-"Reconectando..."
-);
+    mostrarStatus(
+        "X-Stream",
+        "Internet restaurada"
+    );
 
 
-
-verificarServidor();
+    recuperarPlayer();
 
 
 };
@@ -1018,9 +1303,10 @@ verificarServidor();
 window.onoffline=function(){
 
 
-mostrarStatus(
-"Sem conexão"
-);
+    mostrarStatus(
+        "X-Stream",
+        "Sem conexão"
+    );
 
 
 };
@@ -1028,13 +1314,52 @@ mostrarStatus(
 
 
 
+// =====================================
+// LIMPEZA DE MEMÓRIA
+// TV BOX / SMART TV
+// =====================================
+
+
+setInterval(function(){
+
+
+    try{
+
+
+        if(
+        mediaVideo.readyState==0 &&
+        tipoAtual=="video"
+        ){
+
+
+            mediaVideo.load();
+
+
+        }
+
+
+    }catch(e){}
 
 
 
+},20000);
+
+
+
+
+
+// =====================================
+// INÍCIO FINAL
+// =====================================
+
+
+mostrarStatus(
+    "X-Stream",
+    "Player pronto"
+);
 </script>
 
 
 </body>
-
 
 </html>
