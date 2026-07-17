@@ -7,7 +7,6 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-
 <title>X-Stream Universal Player</title>
 
 
@@ -17,7 +16,6 @@
    X-STREAM TV PLAYER
    VISUAL COMPATÍVEL TV / WEBVIEW
 ===================================== */
-
 
 html,
 body{
@@ -39,11 +37,9 @@ color:white;
 }
 
 
-
 /* =====================================
    VÍDEO
 ===================================== */
-
 
 #mediaVideo{
 
@@ -66,13 +62,9 @@ z-index:10;
 }
 
 
-
-
-
 /* =====================================
    ÁUDIO
 ===================================== */
-
 
 #mediaAudio{
 
@@ -81,12 +73,9 @@ display:none;
 }
 
 
-
-
 /* =====================================
    IMAGEM
 ===================================== */
-
 
 #mediaImage{
 
@@ -109,89 +98,58 @@ z-index:15;
 }
 
 
-
-
 /* =====================================
    TELA AGUARDANDO
 ===================================== */
 
-
 #waiting{
-
 
 position:fixed;
 
-
 top:0;
-
 left:0;
 
-
 width:100%;
-
 height:100%;
-
 
 background:#000;
 
-
 display:flex;
-
 
 align-items:center;
 
-
 justify-content:center;
-
 
 flex-direction:column;
 
-
 font-size:28px;
-
 
 z-index:5000;
 
-
 }
-
-
-
 
 
 .loader{
 
-
 width:55px;
-
 
 height:55px;
 
-
 border-radius:50%;
-
 
 border:6px solid #555;
 
-
 border-top-color:white;
 
-
 animation:
-
 spin 1s linear infinite;
 
-
 margin-bottom:25px;
-
 
 }
 
 
-
-
 @keyframes spin{
-
 
 from{
 
@@ -199,296 +157,190 @@ transform:rotate(0deg);
 
 }
 
-
 to{
 
 transform:rotate(360deg);
 
 }
 
-
 }
-
-
-
-
-
 
 
 /* =====================================
    ERRO
 ===================================== */
 
-
 #errorBox{
 
-
 position:fixed;
-
 
 top:0;
 
 left:0;
 
-
 width:100%;
 
 height:100%;
 
-
 background:#000;
-
 
 display:none;
 
-
 align-items:center;
-
 
 justify-content:center;
 
-
 flex-direction:column;
-
 
 text-align:center;
 
-
 z-index:20000;
 
-
 }
-
 
 
 #errorTitle{
 
-
 font-size:40px;
-
 
 margin-bottom:20px;
 
-
 }
-
 
 
 #errorMessage{
 
-
 font-size:22px;
 
-
 max-width:80%;
-
 
 }
 
 
-
-
-
-
-
-
 /* =====================================
-   INFORMAÇÃO DE ÁUDIO
+   INFORMAÇÃO ÁUDIO
 ===================================== */
-
 
 #audioInfo{
 
-
 position:fixed;
-
 
 top:0;
 
 left:0;
 
-
 width:100%;
 
 height:100%;
 
-
 background:#000;
-
 
 display:none;
 
-
 align-items:center;
-
 
 justify-content:center;
 
-
 flex-direction:column;
-
 
 z-index:20;
 
-
 }
-
-
 
 
 #audioInfo:before{
 
-
 content:"♫";
-
 
 font-size:120px;
 
-
 margin-bottom:30px;
 
-
 }
-
-
-
 
 
 #audioTitle{
 
-
 font-size:32px;
-
 
 font-weight:bold;
 
-
 }
-
-
-
-
-
-
 
 
 /* =====================================
    COMPATIBILIDADE TV
 ===================================== */
 
-
 button,
 video,
 audio,
 img{
 
-
 outline:none;
 
-
 }
-
 
 
 *{
 
-
 -webkit-tap-highlight-color:transparent;
 
-
 }
 
+
+/* =====================================
+   CURSOR ORIGINAL DO PROJETO
+===================================== */
 
 #cursorLayer{
 
 position:fixed;
 
 top:0;
+
 left:0;
 
 width:100%;
+
 height:100%;
 
 
 z-index:99999;
 
 
-/* invisível */
-
 color:transparent;
 
 background:transparent;
 
 
-/* mantém texto */
-
 user-select:text;
 
 -webkit-user-select:text;
 
-cursor:text;
-
-
-/* teste primeiro SEM bloquear */
-
-}
-
-
-
-
-
-
-
-
-
-
-#cursorLayer{
-
-position:fixed;
-
-top:0;
-left:0;
-
-width:100%;
-height:100%;
-
-
-z-index:99999;
-
-
-/* invisível */
-
-color:transparent;
-
-background:transparent;
-
-
-/* mantém texto */
-
-user-select:text;
-
--webkit-user-select:text;
 
 cursor:text;
 
 
-/* teste primeiro SEM bloquear */
-
 }
+
 </style>
 
 </head>
+
 <body>
+
+
 <div id="cursorLayer">
 
 Texto de teste invisível
 
 </div>
 
+
 <!-- =====================================
      VÍDEO PRINCIPAL
 ===================================== -->
-
 
 <video
 
@@ -505,13 +357,9 @@ preload="auto"
 ></video>
 
 
-
-
-
 <!-- =====================================
      ÁUDIO
 ===================================== -->
-
 
 <audio
 
@@ -524,14 +372,9 @@ preload="auto"
 ></audio>
 
 
-
-
-
-
 <!-- =====================================
      IMAGEM
 ===================================== -->
-
 
 <img
 
@@ -540,19 +383,11 @@ id="mediaImage"
 >
 
 
-
-
-
-
-
-
 <!-- =====================================
      INFORMAÇÃO ÁUDIO
 ===================================== -->
 
-
 <div id="audioInfo">
-
 
 <div id="audioTitle">
 
@@ -560,22 +395,16 @@ id="mediaImage"
 
 </div>
 
-
 </div>
-
-
 
 
 <!-- =====================================
      AGUARDANDO
 ===================================== -->
 
-
 <div id="waiting">
 
-
 <div class="loader"></div>
-
 
 <div>
 
@@ -583,22 +412,14 @@ Aguardando transmissão...
 
 </div>
 
-
 </div>
-
-
-
-
-
 
 
 <!-- =====================================
      ERRO
 ===================================== -->
 
-
 <div id="errorBox">
-
 
 <div id="errorTitle">
 
@@ -606,20 +427,13 @@ Erro
 
 </div>
 
-
 <div id="errorMessage">
 
 Não foi possível reproduzir.
 
 </div>
 
-
 </div>
-
-
-
-
-
 
 <script>
 
@@ -653,17 +467,9 @@ var dadosServidor = {};
 
 
 
-
-
-
-
-
-
-
 // =====================================
 // TELA AGUARDANDO
 // =====================================
-
 
 function esconderAguardando(){
 
@@ -683,15 +489,9 @@ box.style.display="none";
 
 
 
-
-
-
-
-
 // =====================================
 // ERRO
 // =====================================
-
 
 function mostrarErro(msg){
 
@@ -718,15 +518,9 @@ document.getElementById(
 
 
 
-
-
-
-
-
 // =====================================
 // LIMPAR MÍDIA
 // =====================================
-
 
 function limparMidia(){
 
@@ -750,7 +544,6 @@ mediaVideo.load();
 
 
 
-
 try{
 
 
@@ -770,7 +563,6 @@ mediaAudio.load();
 
 
 
-
 mediaImage.removeAttribute(
 "src"
 );
@@ -781,18 +573,11 @@ mediaImage.removeAttribute(
 
 
 
-
-
-
-
-
 // =====================================
 // RECEBER NOVA MÍDIA
 // =====================================
 
-
 function receberMidia(url){
-
 
 
 if(!url){
@@ -814,16 +599,10 @@ return;
 urlAtual=url;
 
 
-
 limparMidia();
 
 
-
-
-
-
 tentarVideo(url);
-
 
 
 }
@@ -832,13 +611,9 @@ tentarVideo(url);
 
 
 
-
-
-
 // =====================================
 // TENTAR VÍDEO
 // =====================================
-
 
 function tentarVideo(url){
 
@@ -855,9 +630,6 @@ mediaVideo.load();
 
 
 
-
-
-
 mediaVideo.onloadeddata=function(){
 
 
@@ -868,31 +640,22 @@ return;
 }
 
 
-
 confirmado=true;
-
 
 
 tipoAtual="video";
 
 
-
 mostrarVideo();
-
 
 
 esconderAguardando();
 
 
-
 iniciarVideo();
 
 
-
 };
-
-
-
 
 
 
@@ -910,11 +673,7 @@ mostrarVideo();
 esconderAguardando();
 
 
-
 };
-
-
-
 
 
 
@@ -932,11 +691,7 @@ esconderAguardando();
 
 
 
-
-
-
 mediaVideo.onerror=function(){
-
 
 
 if(confirmado){
@@ -946,13 +701,10 @@ return;
 }
 
 
-
 tentarAudio(url);
 
 
-
 };
-
 
 
 }
@@ -961,13 +713,9 @@ tentarAudio(url);
 
 
 
-
-
-
 // =====================================
 // TENTAR ÁUDIO
 // =====================================
-
 
 function tentarAudio(url){
 
@@ -995,17 +743,13 @@ return;
 }
 
 
-
 confirmado=true;
-
 
 
 tipoAtual="audio";
 
 
-
 mediaAudio.play();
-
 
 
 };
@@ -1017,7 +761,6 @@ mediaAudio.play();
 mediaAudio.onerror=function(){
 
 
-
 if(confirmado){
 
 return;
@@ -1025,9 +768,7 @@ return;
 }
 
 
-
 tentarImagem(url);
-
 
 
 };
@@ -1035,10 +776,12 @@ tentarImagem(url);
 
 
 }
+
+
+
 // =====================================
 // TENTAR IMAGEM
 // =====================================
-
 
 function tentarImagem(url){
 
@@ -1062,8 +805,9 @@ mostrarImagem();
 esconderAguardando();
 
 
-
 };
+
+
 
 
 
@@ -1079,6 +823,7 @@ mostrarErro(
 
 
 
+
 img.src=url;
 
 
@@ -1088,15 +833,9 @@ img.src=url;
 
 
 
-
-
-
-
-
 // =====================================
 // CONTROLE DE EXIBIÇÃO
 // =====================================
-
 
 function esconderTodos(){
 
@@ -1116,9 +855,6 @@ mediaImage.style.display="none";
 
 
 
-
-
-
 function mostrarVideo(){
 
 
@@ -1129,9 +865,6 @@ mediaVideo.style.display="block";
 
 
 }
-
-
-
 
 
 
@@ -1153,16 +886,11 @@ mediaImage.style.display="block";
 
 
 
-
-
-
 // =====================================
 // INICIAR VÍDEO
 // =====================================
 
-
 function iniciarVideo(){
-
 
 
 var tentativa =
@@ -1172,7 +900,6 @@ mediaVideo.play();
 
 
 if(tentativa !== undefined){
-
 
 
 tentativa.then(function(){
@@ -1195,19 +922,14 @@ iniciarVideo,
 );
 
 
-
 });
 
 
-
 }
 
 
 
 }
-
-
-
 
 
 
@@ -1230,16 +952,13 @@ esconderAguardando();
 
 
 
-
 mediaVideo.onplaying=function(){
 
 
 esconderAguardando();
 
 
-
 };
-
 
 
 
@@ -1256,9 +975,14 @@ esconderAguardando();
 
 
 
+// CORRIGIDO
+// antes estava aberto e quebrava todo o JS
+
 mediaVideo.onwaiting=function(){
 
 
+
+};
 
 
 
@@ -1267,7 +991,6 @@ mediaVideo.onwaiting=function(){
 // =====================================
 // BUSCAR SERVIDOR
 // =====================================
-
 
 function verificarServidor(){
 
@@ -1290,9 +1013,7 @@ true
 
 
 
-
 xhr.onreadystatechange=function(){
-
 
 
 if(
@@ -1302,7 +1023,6 @@ xhr.readyState===4 &&
 xhr.status===200
 
 ){
-
 
 
 try{
@@ -1326,10 +1046,7 @@ var url="";
 
 
 
-
-
 // FILA NOVA
-
 
 if(
 
@@ -1342,15 +1059,11 @@ dados.fila[dados.atual]
 ){
 
 
-
 url =
-
 dados.fila[dados.atual].url;
 
 
-
 }
-
 
 
 
@@ -1358,17 +1071,13 @@ dados.fila[dados.atual].url;
 
 // COMPATIBILIDADE ANTIGA
 
-
 if(!url && dados.video){
-
 
 
 url=dados.video;
 
 
-
 }
-
 
 
 
@@ -1383,7 +1092,6 @@ url
 ){
 
 
-
 if(
 
 url!==ultimaURL
@@ -1391,15 +1099,12 @@ url!==ultimaURL
 ){
 
 
-
 ultimaURL=url;
-
 
 
 receberMidia(url);
 
 
-
 }
 
 
@@ -1408,11 +1113,7 @@ receberMidia(url);
 
 
 
-}catch(e){
-
-
-
-}
+}catch(e){}
 
 
 
@@ -1427,30 +1128,10 @@ receberMidia(url);
 xhr.send();
 
 
-
 }
-
-
-
-
-
-
-
-
-
 // =====================================
 // CONEXÃO INICIAL
 // =====================================
-
-
-mostrarStatus(
-
-"X-Stream",
-
-"Conectando..."
-
-);
-
 
 
 verificarServidor();
@@ -1464,6 +1145,11 @@ verificarServidor,
 3000
 
 );
+
+
+
+
+
 // =====================================
 // PRÓXIMO VÍDEO AUTOMÁTICO
 // =====================================
@@ -1478,7 +1164,6 @@ mediaVideo.onended=function(){
 
 
 };
-
 
 
 
@@ -1581,16 +1266,6 @@ mediaVideo.onerror=function(){
 
 
 
-mostrarStatus(
-
-"X-Stream",
-
-"Tentando recuperar vídeo..."
-
-);
-
-
-
 setTimeout(
 
 recuperarPlayer,
@@ -1611,16 +1286,6 @@ recuperarPlayer,
 
 
 mediaAudio.onerror=function(){
-
-
-
-mostrarStatus(
-
-"X-Stream",
-
-"Tentando recuperar áudio..."
-
-);
 
 
 
@@ -1653,7 +1318,6 @@ window.ononline=function(){
 
 
 verificarServidor();
-
 
 
 };
@@ -1859,11 +1523,9 @@ mediaVideo.load();
 // =====================================
 
 
-
-
 // =====================================
 // X-STREAM TV CURSOR HIDE ENGINE
-// TENTA OCULTAR PONTEIRO DO NAVEGADOR
+// MANTIDO ORIGINAL
 // =====================================
 
 
@@ -2039,6 +1701,5 @@ mediaVideo.load();
 
 
 </body>
-
 
 </html>
