@@ -12,6 +12,126 @@
 
 
 <style>
+/* =====================================
+   X-STREAM TV MODE
+   REMOVER CURSOR / FOCO / INDICADORES
+   COMPATÍVEL SMART TV / WEBVIEW
+===================================== */
+
+
+/* Remove cursor da página */
+
+html,
+body,
+*{
+
+cursor:none !important;
+
+}
+
+
+/* Remove seleção de texto */
+
+html,
+body,
+*{
+
+-webkit-user-select:none !important;
+
+-moz-user-select:none !important;
+
+-ms-user-select:none !important;
+
+user-select:none !important;
+
+}
+
+
+/* Remove destaque de toque */
+
+*{
+
+-webkit-tap-highlight-color:transparent !important;
+
+}
+
+
+/* Remove bordas de foco */
+
+*:focus,
+*:active,
+*:visited{
+
+outline:none !important;
+
+box-shadow:none !important;
+
+}
+
+
+/* Remove aparência de elementos clicáveis */
+
+button,
+input,
+a,
+video,
+audio,
+img,
+div{
+
+outline:none !important;
+
+}
+
+
+/* Evita que imagens tenham comportamento de arrastar */
+
+img,
+video{
+
+-webkit-user-drag:none !important;
+
+}
+
+
+/* Modo tela de TV */
+
+html,
+body{
+
+overflow:hidden !important;
+
+touch-action:none !important;
+
+}
+
+
+/* Remove barras de rolagem */
+
+::-webkit-scrollbar{
+
+display:none !important;
+
+}
+
+
+/* Evita menus contextuais */
+
+body{
+
+-webkit-touch-callout:none !important;
+
+}
+
+
+/* Remove cursor em mídia */
+
+video,
+audio{
+
+cursor:none !important;
+
+}
 
 /* =====================================
    X-STREAM TV PLAYER
