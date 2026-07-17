@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 
 <head>
@@ -7,17 +8,22 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-<title>X-Stream Player TV</title>
+
+<title>X-Stream TV Player</title>
+
 
 <style>
+
 
 html,
 body{
 
 margin:0;
+
 padding:0;
 
 width:100%;
+
 height:100%;
 
 background:#000;
@@ -26,19 +32,25 @@ overflow:hidden;
 
 font-family:Arial,Helvetica,sans-serif;
 
-color:white;
+color:#fff;
 
 }
 
+
+
+
+/* VIDEO */
 
 #mediaVideo{
 
 position:fixed;
 
 top:0;
+
 left:0;
 
 width:100%;
+
 height:100%;
 
 background:#000;
@@ -53,76 +65,116 @@ z-index:10;
 
 
 
+
+/* STATUS */
+
 #status{
+
 
 position:fixed;
 
+
 top:20px;
+
 left:20px;
+
 
 background:rgba(0,0,0,.75);
 
+
 padding:15px 20px;
+
 
 border-radius:10px;
 
-font-size:20px;
+
+font-size:22px;
+
 
 z-index:9999;
 
+
 }
 
+
+
+
+/* AGUARDANDO */
 
 
 #waiting{
 
+
 position:fixed;
 
+
 top:0;
+
 left:0;
 
+
 width:100%;
+
 height:100%;
+
 
 background:#000;
 
+
 display:flex;
+
 
 align-items:center;
 
+
 justify-content:center;
+
 
 flex-direction:column;
 
+
 font-size:28px;
+
 
 z-index:5000;
 
+
 }
+
 
 
 
 .loader{
 
+
 width:55px;
+
 
 height:55px;
 
+
 border-radius:50%;
+
 
 border:6px solid #555;
 
-border-top-color:white;
+
+border-top-color:#fff;
+
 
 animation:spin 1s linear infinite;
 
+
 margin-bottom:25px;
+
 
 }
 
 
 
+
 @keyframes spin{
+
 
 from{
 
@@ -130,43 +182,66 @@ transform:rotate(0deg);
 
 }
 
+
 to{
 
 transform:rotate(360deg);
 
 }
 
+
 }
 
+
+
+
+
+/* ERRO */
 
 
 #errorBox{
 
-display:none;
 
 position:fixed;
 
+
 top:0;
+
 left:0;
 
+
 width:100%;
+
 height:100%;
+
 
 background:#000;
 
+
+display:none;
+
+
 align-items:center;
+
 
 justify-content:center;
 
+
 flex-direction:column;
+
+
+font-size:28px;
+
 
 z-index:20000;
 
-font-size:25px;
 
 text-align:center;
 
+
 }
+
+
 
 
 
@@ -177,12 +252,17 @@ text-align:center;
 }
 
 
+
 </style>
+
 
 </head>
 
 
+
 <body>
+
+
 
 
 <video
@@ -201,6 +281,8 @@ preload="auto">
 
 
 
+
+
 <div id="status">
 
 X-Stream<br>
@@ -211,60 +293,61 @@ Conectando...
 
 
 
+
+
 <div id="waiting">
+
 
 <div class="loader"></div>
 
+
 Aguardando transmissão...
 
+
 </div>
+
+
+
 
 
 
 <div id="errorBox">
 
-<div>
 
 Erro ao reproduzir vídeo
 
-</div>
 
 </div>
-
 <script>
 
 
 // =====================================
 // X-STREAM PLAYER ENGINE
-// COMPATÍVEL COM SERVIDOR V3
+// BASE COMPATÍVEL TV / WEBVIEW
 // =====================================
 
 
-const servidor = "https://x-stream-56ya.onrender.com";
-
-
-const mediaVideo =
+var mediaVideo =
 document.getElementById("mediaVideo");
 
 
-const waiting =
-document.getElementById("waiting");
-
-
-const status =
+var status =
 document.getElementById("status");
 
 
-const errorBox =
+var waiting =
+document.getElementById("waiting");
+
+
+var errorBox =
 document.getElementById("errorBox");
 
 
 
-let urlAtual = "";
+var urlAtual = "";
 
-let indiceAtual = -1;
+var ultimaURLServidor = "";
 
-let primeiraCarga = true;
 
 
 
@@ -302,12 +385,15 @@ status.style.display="none";
 
 
 
+
+
 // =====================================
 // CARREGAR VÍDEO
 // =====================================
 
 
-function carregarVideo(url){
+function receberVideo(url){
+
 
 
 if(!url){
@@ -318,9 +404,7 @@ return;
 
 
 
-// impede recarregar o mesmo link
-
-if(urlAtual === url){
+if(url === urlAtual){
 
 return;
 
@@ -362,6 +446,7 @@ mediaVideo.load();
 
 
 
+
 mediaVideo.src=url;
 
 
@@ -377,8 +462,10 @@ mediaVideo.load();
 
 
 
+
+
 // =====================================
-// QUANDO ESTIVER PRONTO
+// VÍDEO PRONTO
 // =====================================
 
 
@@ -393,17 +480,21 @@ waiting.style.display="none";
 
 
 
-mediaVideo.play()
+var tentativa =
+mediaVideo.play();
 
-.then(()=>{
+
+
+if(tentativa){
+
+
+tentativa.then(function(){
 
 
 esconderStatus();
 
 
-})
-
-.catch(()=>{
+}).catch(function(){
 
 
 mostrarStatus(
@@ -414,8 +505,12 @@ mostrarStatus(
 });
 
 
+}
+
+
 
 };
+
 
 
 
@@ -432,13 +527,15 @@ mostrarStatus(
 mediaVideo.onplaying=function(){
 
 
-esconderStatus();
-
-
 waiting.style.display="none";
 
 
+esconderStatus();
+
+
 };
+
+
 
 
 
@@ -473,9 +570,9 @@ mostrarStatus(
 
 
 
-
 // =====================================
-// BUSCAR STATUS DO SERVIDOR
+// BUSCAR SERVIDOR
+// IGUAL PLAYER ANTIGO
 // =====================================
 
 
@@ -483,76 +580,96 @@ function verificarServidor(){
 
 
 
-fetch(
-servidor+"/status"
-)
-
-.then(res=>res.json())
-
-.then(dados=>{
-
-
-console.log("STATUS",dados);
+var xhr =
+new XMLHttpRequest();
 
 
 
+xhr.open(
 
-if(!dados.ativo){
+"GET",
 
+"/status",
 
-mostrarStatus(
-"Aguardando transmissão..."
+true
+
 );
 
 
-return;
-
-}
 
 
 
+xhr.onreadystatechange=function(){
 
 
-
-let item=null;
-
-
-
-
-// servidor com fila
 
 if(
-dados.fila &&
-dados.fila.length > 0
+
+xhr.readyState===4 &&
+
+xhr.status===200
+
 ){
 
 
-item =
+
+try{
+
+
+
+var dados =
+JSON.parse(
+xhr.responseText
+);
+
+
+
+
+
+var url="";
+
+
+
+
+
+// SERVIDOR NOVO
+
+if(
+
+dados.fila &&
+
+dados.fila.length > 0
+
+){
+
+
+
+var item =
 dados.fila[dados.atual];
 
 
-}
 
-
-
-
-
-
-// compatibilidade servidor antigo
-
-let url="";
-
-
-
-if(item && item.url){
-
+if(item){
 
 url=item.url;
 
+}
+
+
 
 }
 
-else if(dados.video){
+
+
+
+
+// COMPATIBILIDADE ANTIGO
+
+if(
+
+!url && dados.video
+
+){
 
 
 url=dados.video;
@@ -565,20 +682,27 @@ url=dados.video;
 
 
 
-if(url){
+
+if(
+
+dados.ativo && url
+
+){
 
 
 
-if(url !== urlAtual){
+if(
+
+url !== ultimaURLServidor
+
+){
 
 
 
-indiceAtual =
-dados.atual;
+ultimaURLServidor=url;
 
 
-
-carregarVideo(url);
+receberVideo(url);
 
 
 
@@ -586,22 +710,39 @@ carregarVideo(url);
 
 
 
-}
+}else{
 
-
-
-
-})
-
-.catch(()=>{
 
 
 mostrarStatus(
-"Conectando..."
+"Aguardando transmissão..."
 );
 
 
-});
+
+}
+
+
+
+
+}catch(e){
+
+
+
+}
+
+
+
+
+}
+
+
+
+};
+
+
+
+xhr.send();
 
 
 
@@ -615,7 +756,7 @@ mostrarStatus(
 
 
 // =====================================
-// INICIAR MONITORAMENTO
+// INICIAR
 // =====================================
 
 
@@ -636,17 +777,24 @@ verificarServidor,
 3000
 
 );
-
 // =====================================
-// QUANDO O VÍDEO TERMINAR
-// AVANÇA AUTOMATICAMENTE
+// QUANDO TERMINAR O VÍDEO
 // =====================================
 
 
 mediaVideo.onended=function(){
 
 
-    enviarComando("next");
+mostrarStatus(
+"Próximo vídeo..."
+);
+
+
+
+enviarComando(
+"next"
+);
+
 
 
 };
@@ -658,7 +806,7 @@ mediaVideo.onended=function(){
 
 
 // =====================================
-// ENVIAR COMANDO SERVIDOR
+// COMANDO PARA SERVIDOR
 // =====================================
 
 
@@ -666,49 +814,48 @@ function enviarComando(acao){
 
 
 
-fetch(
+var xhr =
+new XMLHttpRequest();
 
-servidor+"/controle",
 
-{
 
-method:"POST",
+xhr.open(
 
-headers:{
+"POST",
 
-"Content-Type":
+"/controle",
+
+true
+
+);
+
+
+
+xhr.setRequestHeader(
+
+"Content-Type",
 
 "application/json"
 
-},
+);
 
-body:JSON.stringify({
+
+
+xhr.send(
+
+JSON.stringify({
 
 acao:acao
 
 })
 
-}
-
-)
-
-.then(()=>{
-
-
-setTimeout(
-
-verificarServidor,
-
-1000
-
 );
 
 
-});
-
-
 
 }
+
+
 
 
 
@@ -716,7 +863,7 @@ verificarServidor,
 
 
 // =====================================
-// PRÓXIMO VÍDEO
+// PRÓXIMO
 // =====================================
 
 
@@ -735,8 +882,10 @@ enviarComando(
 
 
 
+
+
 // =====================================
-// VÍDEO ANTERIOR
+// ANTERIOR
 // =====================================
 
 
@@ -755,6 +904,8 @@ enviarComando(
 
 
 
+
+
 // =====================================
 // CONTROLE REMOTO TV
 // =====================================
@@ -764,7 +915,12 @@ document.onkeydown=function(e){
 
 
 
-switch(e.keyCode){
+var tecla =
+e.keyCode;
+
+
+
+switch(tecla){
 
 
 
@@ -800,6 +956,7 @@ break;
 
 
 
+
 // =====================================
 // CLIQUE NO VÍDEO
 // =====================================
@@ -815,16 +972,59 @@ if(mediaVideo.paused){
 mediaVideo.play();
 
 
+
 }else{
 
 
 mediaVideo.pause();
 
 
+
 }
 
 
+
 };
+
+
+
+
+
+
+
+// =====================================
+// INTERNET
+// =====================================
+
+
+window.ononline=function(){
+
+
+mostrarStatus(
+"Reconectando..."
+);
+
+
+
+verificarServidor();
+
+
+};
+
+
+
+
+
+window.onoffline=function(){
+
+
+mostrarStatus(
+"Sem conexão"
+);
+
+
+};
+
 
 
 
@@ -836,6 +1036,5 @@ mediaVideo.pause();
 
 </body>
 
+
 </html>
-
-
