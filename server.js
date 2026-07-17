@@ -6,12 +6,9 @@ const path = require("path");
 const app = express();
 
 
-
 app.use(cors());
 
-
 app.use(express.json());
-
 
 
 app.use(
@@ -22,9 +19,8 @@ app.use(
 
 
 
-
 // =====================================
-// ESTADO GLOBAL X-STREAM V3
+// ESTADO GLOBAL X-STREAM V4
 // =====================================
 
 
@@ -62,6 +58,7 @@ let transmissao = {
 
 
 
+
 // =====================================
 // HOME
 // =====================================
@@ -71,7 +68,7 @@ app.get("/",(req,res)=>{
 
 
     res.send(
-        "Servidor X-Stream V3 online"
+        "Servidor X-Stream V4 online"
     );
 
 
@@ -111,7 +108,7 @@ app.get("/player",(req,res)=>{
 
 
 // =====================================
-// ENVIAR NOVA URL
+// RECEBER NOVA URL
 // =====================================
 
 
@@ -130,13 +127,14 @@ app.post("/enviar",(req,res)=>{
 
             sucesso:false,
 
-            erro:
-            "URL não enviada"
+            erro:"URL vazia"
 
         });
 
 
     }
+
+
 
 
 
@@ -151,16 +149,22 @@ app.post("/enviar",(req,res)=>{
 
 
 
+
+
     transmissao.ativo=true;
 
 
 
+
     if(
-        transmissao.fila.length === 1
+    transmissao.fila.length === 1
     ){
 
 
         transmissao.atual=0;
+
+
+        transmissao.posicao=0;
 
 
     }
@@ -170,9 +174,6 @@ app.post("/enviar",(req,res)=>{
 
 
     transmissao.estado="playing";
-
-
-    transmissao.posicao=0;
 
 
     transmissao.comando="novo";
@@ -187,7 +188,7 @@ app.post("/enviar",(req,res)=>{
 
 
     console.log(
-        "Nova mídia:",
+        "Nova URL:",
         url
     );
 
@@ -195,21 +196,20 @@ app.post("/enviar",(req,res)=>{
 
 
 
-    res.json({
 
+
+    res.json({
 
         sucesso:true,
 
-
         transmissao
-
-
 
     });
 
 
 
 });
+
 
 
 
@@ -240,8 +240,61 @@ app.get("/status",(req,res)=>{
 
 
 
+
 // =====================================
-// CONTROLE GLOBAL
+// RECEBER POSIÇÃO REAL DO PLAYER
+// =====================================
+
+
+app.post("/atualizar-posicao",(req,res)=>{
+
+
+    let posicao =
+    Number(req.body.posicao);
+
+
+
+    if(
+    !isNaN(posicao)
+    ){
+
+
+        transmissao.posicao =
+        posicao;
+
+
+        transmissao.atualizado =
+        Date.now();
+
+
+    }
+
+
+
+
+
+    res.json({
+
+        sucesso:true,
+
+        posicao:
+        transmissao.posicao
+
+    });
+
+
+
+});
+
+
+
+
+
+
+
+
+// =====================================
+// CONTROLES GLOBAIS
 // =====================================
 
 
@@ -250,6 +303,7 @@ app.post("/controle",(req,res)=>{
 
     const acao =
     req.body.acao;
+
 
 
 
@@ -265,6 +319,7 @@ app.post("/controle",(req,res)=>{
 
 
         break;
+
 
 
 
@@ -297,6 +352,8 @@ app.post("/controle",(req,res)=>{
 
 
 
+
+
         case "seek":
 
 
@@ -312,15 +369,17 @@ app.post("/controle",(req,res)=>{
 
 
 
+
+
         case "next":
 
 
-
-            proximoVideo();
-
+            proximo();
 
 
         break;
+
+
 
 
 
@@ -329,12 +388,11 @@ app.post("/controle",(req,res)=>{
         case "previous":
 
 
-
-            videoAnterior();
-
+            anterior();
 
 
         break;
+
 
 
 
@@ -359,7 +417,6 @@ app.post("/controle",(req,res)=>{
 
 
 
-
     transmissao.comando =
     acao;
 
@@ -375,13 +432,9 @@ app.post("/controle",(req,res)=>{
 
     res.json({
 
-
         sucesso:true,
 
-
         transmissao
-
-
 
     });
 
@@ -395,18 +448,20 @@ app.post("/controle",(req,res)=>{
 
 
 
+
+
 // =====================================
 // PRÓXIMO VÍDEO
 // =====================================
 
 
-function proximoVideo(){
+function proximo(){
 
 
 
     if(
     transmissao.atual <
-    transmissao.fila.length - 1
+    transmissao.fila.length-1
     ){
 
 
@@ -431,11 +486,11 @@ function proximoVideo(){
 
 
 // =====================================
-// VÍDEO ANTERIOR
+// ANTERIOR
 // =====================================
 
 
-function videoAnterior(){
+function anterior(){
 
 
 
@@ -456,6 +511,8 @@ function videoAnterior(){
 
 
 }
+
+
 
 
 
@@ -486,98 +543,9 @@ app.post("/limpar",(req,res)=>{
     transmissao.posicao=0;
 
 
-
     transmissao.comando="limpar";
 
 
-    transmissao.atualizado =
-    Date.now();
-
-
-
-
-    res.json({
-
-        sucesso:true,
-
-        transmissao
-
-    });
-
-
-
-});
-
-
-
-
-
-
-
-// =====================================
-// REMOVER ITEM DA FILA
-// =====================================
-
-
-app.post("/remover",(req,res)=>{
-
-
-    const index =
-    Number(req.body.index);
-
-
-
-
-    if(
-    index >=0 &&
-    index < transmissao.fila.length
-    ){
-
-
-        transmissao.fila.splice(
-            index,
-            1
-        );
-
-
-
-        if(
-        transmissao.atual >=
-        transmissao.fila.length
-        ){
-
-
-            transmissao.atual =
-            Math.max(
-                0,
-                transmissao.fila.length-1
-            );
-
-
-        }
-
-
-
-    }
-
-
-
-
-    if(
-    transmissao.fila.length===0
-    ){
-
-
-        transmissao.ativo=false;
-
-
-    }
-
-
-
-
-    transmissao.comando="remover";
-
 
     transmissao.atualizado =
     Date.now();
@@ -588,9 +556,7 @@ app.post("/remover",(req,res)=>{
 
     res.json({
 
-        sucesso:true,
-
-        transmissao
+        sucesso:true
 
     });
 
@@ -614,15 +580,12 @@ app.get("/fila",(req,res)=>{
 
     res.json({
 
-
         fila:
         transmissao.fila,
 
 
         atual:
         transmissao.atual
-
-
 
     });
 
@@ -636,14 +599,9 @@ app.get("/fila",(req,res)=>{
 
 
 
-// =====================================
-// SERVIDOR
-// =====================================
-
 
 const PORT =
 process.env.PORT || 3000;
-
 
 
 
@@ -652,7 +610,7 @@ app.listen(PORT,()=>{
 
 console.log(
 
-"X-Stream V3 rodando na porta",
+"X-Stream V4 rodando na porta",
 
 PORT
 
@@ -660,4 +618,3 @@ PORT
 
 
 });
-
