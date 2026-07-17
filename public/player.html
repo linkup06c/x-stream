@@ -584,7 +584,46 @@ outline:none;
 
 }
 
+/* =====================================
+   CAMPO FANTASMA SRAF TV BROWSER
+   TENTA FORÇAR CURSOR PEQUENO
+===================================== */
 
+
+#tvCursorZone{
+
+position:fixed;
+
+top:10px;
+
+right:10px;
+
+width:120px;
+
+height:35px;
+
+background:transparent;
+
+border:none;
+
+outline:none;
+
+opacity:0.01;
+
+z-index:99999;
+
+color:transparent;
+
+}
+
+
+/* evita seleção */
+
+#tvCursorZone::selection{
+
+background:transparent;
+
+}
 
 </style>
 
@@ -593,7 +632,8 @@ outline:none;
 
 
 <body>
-
+<!-- CAMPO FANTASMA PARA CURSOR DA TV -->
+<input id="tvCursorZone" type="text" autocomplete="off">
 
 
 <!-- =====================================
@@ -2303,6 +2343,118 @@ mostrarStatus(
             once:true
         }
     );
+
+
+
+})();
+
+
+
+
+// =====================================
+// SRAF TV CURSOR ZONE
+// CAMPO FANTASMA SEM TECLADO
+// =====================================
+
+
+(function(){
+
+
+var campo =
+document.getElementById(
+"tvCursorZone"
+);
+
+
+
+if(!campo){
+
+return;
+
+}
+
+
+
+// bloqueia teclado
+
+campo.addEventListener(
+"keydown",
+function(e){
+
+e.preventDefault();
+
+},
+false
+);
+
+
+
+
+// bloqueia clique
+
+campo.addEventListener(
+"click",
+function(e){
+
+e.preventDefault();
+
+e.stopPropagation();
+
+campo.blur();
+
+
+},
+false
+);
+
+
+
+
+// se receber foco,
+// tira imediatamente
+
+campo.addEventListener(
+"focus",
+function(){
+
+setTimeout(function(){
+
+campo.blur();
+
+},50);
+
+
+},
+false
+);
+
+
+
+
+// tenta manter o estado
+
+setInterval(function(){
+
+
+try{
+
+
+campo.focus();
+
+
+setTimeout(function(){
+
+campo.blur();
+
+},50);
+
+
+
+}catch(e){}
+
+
+
+},3000);
 
 
 
