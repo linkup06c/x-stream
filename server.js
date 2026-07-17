@@ -6,9 +6,12 @@ const path = require("path");
 const app = express();
 
 
+
 app.use(cors());
 
+
 app.use(express.json());
+
 
 
 app.use(
@@ -19,12 +22,14 @@ app.use(
 
 
 
-// ================================
-// ESTADO GLOBAL X-STREAM
-// ================================
+
+// =====================================
+// ESTADO GLOBAL X-STREAM V3
+// =====================================
 
 
 let transmissao = {
+
 
     ativo:false,
 
@@ -41,10 +46,14 @@ let transmissao = {
     posicao:0,
 
 
+    volume:1,
+
+
     comando:"",
 
 
     atualizado:Date.now()
+
 
 };
 
@@ -52,16 +61,17 @@ let transmissao = {
 
 
 
-// ================================
+
+// =====================================
 // HOME
-// ================================
+// =====================================
 
 
 app.get("/",(req,res)=>{
 
 
     res.send(
-        "Servidor X-Stream online"
+        "Servidor X-Stream V3 online"
     );
 
 
@@ -71,20 +81,24 @@ app.get("/",(req,res)=>{
 
 
 
-// ================================
+
+
+// =====================================
 // PLAYER
-// ================================
+// =====================================
 
 
 app.get("/player",(req,res)=>{
 
 
     res.sendFile(
+
         path.join(
             __dirname,
             "public",
             "player.html"
         )
+
     );
 
 
@@ -94,15 +108,18 @@ app.get("/player",(req,res)=>{
 
 
 
-// ================================
-// ENVIAR NOVA MÍDIA
-// ================================
+
+
+// =====================================
+// ENVIAR NOVA URL
+// =====================================
 
 
 app.post("/enviar",(req,res)=>{
 
 
-    const url=req.body.url;
+    const url =
+    req.body.url;
 
 
 
@@ -110,6 +127,8 @@ app.post("/enviar",(req,res)=>{
 
 
         return res.json({
+
+            sucesso:false,
 
             erro:
             "URL não enviada"
@@ -130,12 +149,14 @@ app.post("/enviar",(req,res)=>{
 
 
 
+
+
     transmissao.ativo=true;
 
 
 
     if(
-        transmissao.fila.length===1
+        transmissao.fila.length === 1
     ){
 
 
@@ -146,7 +167,12 @@ app.post("/enviar",(req,res)=>{
 
 
 
+
+
     transmissao.estado="playing";
+
+
+    transmissao.posicao=0;
 
 
     transmissao.comando="novo";
@@ -154,6 +180,8 @@ app.post("/enviar",(req,res)=>{
 
     transmissao.atualizado =
     Date.now();
+
+
 
 
 
@@ -166,11 +194,16 @@ app.post("/enviar",(req,res)=>{
 
 
 
+
     res.json({
+
 
         sucesso:true,
 
+
         transmissao
+
+
 
     });
 
@@ -182,15 +215,21 @@ app.post("/enviar",(req,res)=>{
 
 
 
-// ================================
+
+
+// =====================================
 // STATUS GLOBAL
-// ================================
+// =====================================
 
 
 app.get("/status",(req,res)=>{
 
 
-    res.json(transmissao);
+    res.json(
+
+        transmissao
+
+    );
 
 
 });
@@ -199,29 +238,34 @@ app.get("/status",(req,res)=>{
 
 
 
-// ================================
+
+
+// =====================================
 // CONTROLE GLOBAL
-// ================================
+// =====================================
 
 
 app.post("/controle",(req,res)=>{
 
 
-    const acao=req.body.acao;
+    const acao =
+    req.body.acao;
 
 
 
     switch(acao){
 
 
+
         case "play":
 
 
-            transmissao.estado=
+            transmissao.estado =
             "playing";
 
 
-            break;
+        break;
+
 
 
 
@@ -229,19 +273,26 @@ app.post("/controle",(req,res)=>{
         case "pause":
 
 
-            transmissao.estado=
+            transmissao.estado =
             "paused";
 
 
-            if(req.body.posicao){
 
-                transmissao.posicao=
-                req.body.posicao;
+            if(
+            req.body.valor !== undefined
+            ){
+
+
+                transmissao.posicao =
+                Number(req.body.valor);
+
 
             }
 
 
-            break;
+
+        break;
+
 
 
 
@@ -249,11 +300,14 @@ app.post("/controle",(req,res)=>{
         case "seek":
 
 
+
             transmissao.posicao =
-            Number(req.body.posicao);
+            Number(req.body.valor);
 
 
-            break;
+
+        break;
+
 
 
 
@@ -261,10 +315,13 @@ app.post("/controle",(req,res)=>{
         case "next":
 
 
+
             proximoVideo();
 
 
-            break;
+
+        break;
+
 
 
 
@@ -272,25 +329,33 @@ app.post("/controle",(req,res)=>{
         case "previous":
 
 
+
             videoAnterior();
 
 
-            break;
+
+        break;
+
+
 
 
 
         case "volume":
 
 
+
             transmissao.volume =
             Number(req.body.valor);
 
 
-            break;
+
+        break;
 
 
 
     }
+
+
 
 
 
@@ -299,16 +364,24 @@ app.post("/controle",(req,res)=>{
     acao;
 
 
+
     transmissao.atualizado =
     Date.now();
 
 
 
+
+
+
     res.json({
+
 
         sucesso:true,
 
+
         transmissao
+
+
 
     });
 
@@ -320,27 +393,32 @@ app.post("/controle",(req,res)=>{
 
 
 
-// ================================
-// PRÓXIMO
-// ================================
+
+
+// =====================================
+// PRÓXIMO VÍDEO
+// =====================================
 
 
 function proximoVideo(){
 
 
+
     if(
-        transmissao.atual <
-        transmissao.fila.length-1
+    transmissao.atual <
+    transmissao.fila.length - 1
     ){
 
 
         transmissao.atual++;
 
 
-        transmissao.posicao=0;
-
-
     }
+
+
+
+    transmissao.posicao=0;
+
 
 
 }
@@ -350,26 +428,31 @@ function proximoVideo(){
 
 
 
-// ================================
-// ANTERIOR
-// ================================
+
+
+// =====================================
+// VÍDEO ANTERIOR
+// =====================================
 
 
 function videoAnterior(){
 
 
+
     if(
-        transmissao.atual>0
+    transmissao.atual > 0
     ){
 
 
         transmissao.atual--;
 
 
-        transmissao.posicao=0;
-
-
     }
+
+
+
+    transmissao.posicao=0;
+
 
 
 }
@@ -379,9 +462,10 @@ function videoAnterior(){
 
 
 
-// ================================
+
+// =====================================
 // LIMPAR FILA
-// ================================
+// =====================================
 
 
 app.post("/limpar",(req,res)=>{
@@ -399,12 +483,27 @@ app.post("/limpar",(req,res)=>{
     transmissao.estado="paused";
 
 
+    transmissao.posicao=0;
+
+
+
+    transmissao.comando="limpar";
+
+
+    transmissao.atualizado =
+    Date.now();
+
+
+
 
     res.json({
 
-        sucesso:true
+        sucesso:true,
+
+        transmissao
 
     });
+
 
 
 });
@@ -414,15 +513,107 @@ app.post("/limpar",(req,res)=>{
 
 
 
-// ================================
-// VER FILA
-// ================================
+
+// =====================================
+// REMOVER ITEM DA FILA
+// =====================================
+
+
+app.post("/remover",(req,res)=>{
+
+
+    const index =
+    Number(req.body.index);
+
+
+
+
+    if(
+    index >=0 &&
+    index < transmissao.fila.length
+    ){
+
+
+        transmissao.fila.splice(
+            index,
+            1
+        );
+
+
+
+        if(
+        transmissao.atual >=
+        transmissao.fila.length
+        ){
+
+
+            transmissao.atual =
+            Math.max(
+                0,
+                transmissao.fila.length-1
+            );
+
+
+        }
+
+
+
+    }
+
+
+
+
+    if(
+    transmissao.fila.length===0
+    ){
+
+
+        transmissao.ativo=false;
+
+
+    }
+
+
+
+
+    transmissao.comando="remover";
+
+
+    transmissao.atualizado =
+    Date.now();
+
+
+
+
+
+    res.json({
+
+        sucesso:true,
+
+        transmissao
+
+    });
+
+
+
+});
+
+
+
+
+
+
+
+// =====================================
+// FILA
+// =====================================
 
 
 app.get("/fila",(req,res)=>{
 
 
     res.json({
+
 
         fila:
         transmissao.fila,
@@ -432,13 +623,22 @@ app.get("/fila",(req,res)=>{
         transmissao.atual
 
 
+
     });
+
 
 
 });
 
 
 
+
+
+
+
+// =====================================
+// SERVIDOR
+// =====================================
 
 
 const PORT =
@@ -451,9 +651,13 @@ app.listen(PORT,()=>{
 
 
 console.log(
-"X-Stream rodando na porta",
+
+"X-Stream V3 rodando na porta",
+
 PORT
+
 );
 
 
 });
+
