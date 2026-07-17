@@ -7,11 +7,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>X-Stream Controle V4</title>
+
+<title>X-Stream Controle</title>
 
 
 <style>
-
 
 body{
 
@@ -28,13 +28,11 @@ font-family:Arial,sans-serif;
 }
 
 
-
 h1{
 
 text-align:center;
 
 }
-
 
 
 .box{
@@ -95,7 +93,7 @@ transform:scale(.95);
 
 
 
-#lista{
+.lista{
 
 background:#000;
 
@@ -109,25 +107,27 @@ border-radius:10px;
 
 .item{
 
+background:#222;
+
+padding:15px;
+
+margin-bottom:10px;
+
+border-radius:8px;
+
 display:flex;
 
 justify-content:space-between;
 
 align-items:center;
 
-background:#222;
-
-padding:12px;
-
-margin-bottom:10px;
-
-border-radius:8px;
-
 }
 
 
 
-.nome{
+.item span{
+
+cursor:pointer;
 
 font-size:18px;
 
@@ -135,37 +135,17 @@ font-size:18px;
 
 
 
-.excluir{
+.delete{
 
-background:#b00020;
-
-color:white;
-
-}
-
-
-
-.controle{
-
-background:#0066cc;
+background:#900;
 
 color:white;
 
 }
-
-
-
-.limpar{
-
-background:#aa0000;
-
-color:white;
-
-}
-
 
 
 </style>
+
 
 </head>
 
@@ -173,11 +153,8 @@ color:white;
 <body>
 
 
-
 <h1>
-
-X-Stream Controle V4
-
+X-Stream Controle
 </h1>
 
 
@@ -187,9 +164,7 @@ X-Stream Controle V4
 
 
 <h2>
-
 Adicionar vídeo
-
 </h2>
 
 
@@ -197,7 +172,7 @@ Adicionar vídeo
 
 id="url"
 
-placeholder="Cole a URL do vídeo"
+placeholder="Cole o link do vídeo"
 
 >
 
@@ -205,7 +180,7 @@ placeholder="Cole a URL do vídeo"
 <br><br>
 
 
-<button onclick="adicionar()">
+<button onclick="enviar()">
 
 Adicionar
 
@@ -223,16 +198,12 @@ Adicionar
 
 
 <h2>
-
-Controle
-
+Controles
 </h2>
 
 
 
-<button 
-class="controle"
-onclick="anterior()">
+<button onclick="comando('previous')">
 
 ◀ Anterior
 
@@ -240,9 +211,7 @@ onclick="anterior()">
 
 
 
-<button
-class="controle"
-onclick="proximo()">
+<button onclick="comando('next')">
 
 Próximo ▶
 
@@ -250,11 +219,9 @@ Próximo ▶
 
 
 
-<button
-class="limpar"
-onclick="limpar()">
+<button onclick="limpar()">
 
-Limpar lista
+🗑 Limpar fila
 
 </button>
 
@@ -267,17 +234,17 @@ Limpar lista
 
 
 
+
 <div class="box">
 
 
 <h2>
-
 Fila atual
-
 </h2>
 
 
-<div id="lista">
+
+<div id="fila" class="lista">
 
 Carregando...
 
@@ -291,10 +258,21 @@ Carregando...
 
 
 
+
 <script>
 
 
-const servidor="https://x-stream-56ya.onrender.com";
+// =====================================
+// SERVIDOR
+// =====================================
+
+
+const servidor =
+
+"https://x-stream-56ya.onrender.com";
+
+
+
 
 
 
@@ -305,20 +283,26 @@ const servidor="https://x-stream-56ya.onrender.com";
 // =====================================
 
 
-function adicionar(){
+function enviar(){
 
 
 
 let url =
+
 document.getElementById("url").value.trim();
 
 
 
 if(!url){
 
+alert(
+"Digite uma URL"
+);
+
 return;
 
 }
+
 
 
 
@@ -328,16 +312,13 @@ servidor+"/enviar",
 
 {
 
-
 method:"POST",
 
 headers:{
 
-"Content-Type":
-"application/json"
+"Content-Type":"application/json"
 
 },
-
 
 body:JSON.stringify({
 
@@ -345,11 +326,11 @@ url:url
 
 })
 
-
 }
 
-
 )
+
+.then(r=>r.json())
 
 .then(()=>{
 
@@ -363,6 +344,7 @@ atualizar();
 });
 
 
+
 }
 
 
@@ -371,28 +353,55 @@ atualizar();
 
 
 
+
+
 // =====================================
-// PRÓXIMO
+// COMANDO
 // =====================================
 
 
-function proximo(){
+function comando(acao){
+
 
 
 fetch(
 
-servidor+"/next",
+servidor+"/controle",
 
 {
 
-method:"POST"
+method:"POST",
+
+headers:{
+
+"Content-Type":"application/json"
+
+},
+
+body:JSON.stringify({
+
+acao:acao
+
+})
 
 }
 
-);
+)
+
+.then(()=>{
+
+
+atualizar();
+
+
+});
+
 
 
 }
+
+
+
 
 
 
@@ -400,27 +409,51 @@ method:"POST"
 
 
 // =====================================
-// ANTERIOR
+// SELECIONAR LINK
 // =====================================
 
 
-function anterior(){
+function selecionar(index){
+
 
 
 fetch(
 
-servidor+"/previous",
+servidor+"/selecionar",
 
 {
 
-method:"POST"
+method:"POST",
+
+headers:{
+
+"Content-Type":"application/json"
+
+},
+
+body:JSON.stringify({
+
+index:index
+
+})
 
 }
 
-);
+)
+
+.then(()=>{
+
+
+atualizar();
+
+
+});
+
 
 
 }
+
+
 
 
 
@@ -428,7 +461,7 @@ method:"POST"
 
 
 // =====================================
-// EXCLUIR
+// REMOVER
 // =====================================
 
 
@@ -442,16 +475,13 @@ servidor+"/remover",
 
 {
 
-
 method:"POST",
 
 headers:{
 
-"Content-Type":
-"application/json"
+"Content-Type":"application/json"
 
 },
-
 
 body:JSON.stringify({
 
@@ -459,9 +489,7 @@ index:index
 
 })
 
-
 }
-
 
 )
 
@@ -475,6 +503,8 @@ atualizar();
 
 
 }
+
+
 
 
 
@@ -512,6 +542,7 @@ atualizar();
 });
 
 
+
 }
 
 
@@ -520,8 +551,10 @@ atualizar();
 
 
 
+
+
 // =====================================
-// ATUALIZAR LISTA
+// ATUALIZAR
 // =====================================
 
 
@@ -535,20 +568,47 @@ servidor+"/status"
 
 )
 
-
 .then(r=>r.json())
 
-
 .then(dados=>{
+
+
+mostrarFila(dados);
+
+
+});
+
+
+}
+
+
+
+
+
+
+
+
+
+// =====================================
+// MOSTRAR FILA
+// =====================================
+
+
+function mostrarFila(dados){
+
 
 
 let html="";
 
 
 
+
 if(
+
 !dados.fila ||
+
 dados.fila.length===0
+
 ){
 
 
@@ -560,51 +620,67 @@ html="Fila vazia";
 
 
 dados.fila.forEach(
+
 (item,index)=>{
 
 
-let atual="";
+
+let ativo="";
 
 
-if(
-index===dados.atual
-){
 
-atual="▶ ";
+if(index===dados.atual){
+
+
+ativo="▶ ";
+
+
+}else{
+
+
+ativo="○ ";
+
 
 }
 
 
 
-html +=
 
-`
+html += `
+
+
 <div class="item">
 
-<div class="nome">
 
-${atual}
+<span onclick="selecionar(${index})">
 
-${item.nome}
+${ativo}Link ${index+1}
 
-</div>
+</span>
 
 
-<button 
-class="excluir"
+
+<button class="delete"
+
 onclick="remover(${index})">
 
-Excluir
+🗑
 
 </button>
 
 
 </div>
+
+
 `;
 
 
 
-});
+}
+
+
+);
+
 
 
 }
@@ -612,12 +688,11 @@ Excluir
 
 
 document.getElementById(
-"lista"
+
+"fila"
+
 ).innerHTML=html;
 
-
-
-});
 
 
 }
@@ -628,9 +703,8 @@ document.getElementById(
 
 
 
-// =====================================
-// INICIAR
-// =====================================
+
+// inicialização
 
 
 atualizar();
