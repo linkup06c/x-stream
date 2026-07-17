@@ -5,12 +5,17 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<meta name="viewport"
+content="width=device-width,initial-scale=1,user-scalable=no">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 
 <title>X-Stream Player</title>
 
 <style>
-
 html,
 body{
 
@@ -24,64 +29,205 @@ background:#000;
 
 overflow:hidden;
 
-font-family:Arial,sans-serif;
+font-family:Arial,Helvetica,sans-serif;
+
+-webkit-user-select:none;
+user-select:none;
 
 }
 
-#video{
 
-position:absolute;
+/* PLAYER */
 
-top:0;
+#playerArea{
+
+position:fixed;
+
 left:0;
+top:0;
 
 width:100%;
 height:100%;
 
 background:#000;
 
+overflow:hidden;
+
 }
 
-#status{
+
+#video{
 
 position:absolute;
 
-top:15px;
-left:15px;
+left:0;
+top:0;
 
-z-index:9999;
+width:100%;
+height:100%;
 
-background:rgba(0,0,0,.7);
+background:#000;
 
-padding:10px 15px;
+object-fit:contain;
 
-border-radius:8px;
+outline:none;
 
-color:#fff;
+}
+
+
+/* STATUS */
+
+#status{
+
+position:fixed;
+
+left:20px;
+
+top:20px;
+
+z-index:99999;
+
+padding:15px 18px;
+
+background:rgba(0,0,0,.70);
+
+border-radius:10px;
+
+color:#FFF;
+
+transition:opacity .4s;
+
+max-width:420px;
+
+}
+
+
+#statusTitle{
+
+font-size:20px;
+
+font-weight:bold;
+
+margin-bottom:6px;
+
+}
+
+
+#statusText{
 
 font-size:18px;
 
 }
 
-#playBtn{
 
-position:absolute;
+/* AGUARDANDO */
 
-bottom:30px;
+#waiting{
 
-left:50%;
+position:fixed;
 
-transform:translateX(-50%);
+left:0;
+top:0;
 
-z-index:9999;
+width:100%;
+height:100%;
 
-padding:12px 25px;
+display:flex;
 
-font-size:20px;
+flex-direction:column;
 
-border:none;
+align-items:center;
 
-border-radius:8px;
+justify-content:center;
+
+background:#000;
+
+color:#FFF;
+
+}
+
+
+#waitingIcon{
+
+font-size:90px;
+
+margin-bottom:20px;
+
+opacity:.80;
+
+}
+
+
+#waitingText{
+
+font-size:30px;
+
+text-align:center;
+
+}
+
+
+/* ERRO */
+
+#errorScreen{
+
+position:fixed;
+
+left:0;
+top:0;
+
+width:100%;
+height:100%;
+
+display:none;
+
+align-items:center;
+
+justify-content:center;
+
+flex-direction:column;
+
+background:#000;
+
+color:#FFF;
+
+}
+
+
+#errorTitle{
+
+font-size:42px;
+
+font-weight:bold;
+
+margin-bottom:20px;
+
+}
+
+
+#errorText{
+
+font-size:24px;
+
+text-align:center;
+
+max-width:80%;
+
+}
+
+
+/* OCULTAR */
+
+.hidden{
+
+display:none !important;
+
+}
+
+
+.fade{
+
+opacity:0;
 
 }
 
@@ -91,241 +237,812 @@ border-radius:8px;
 
 <body>
 
+<!-- PAINEL DE STATUS -->
 
 <div id="status">
 
-Iniciando Player...
+<div id="statusTitle">
+
+X-Stream
+
+</div>
+
+<div id="statusText">
+
+Conectando...
+
+</div>
 
 </div>
 
 
+<!-- ÁREA DO PLAYER -->
+
+<div id="playerArea">
+
 <video
+
 id="video"
+
+preload="auto"
+
+autoplay
+
 controls
+
 playsinline
+
 webkit-playsinline
-preload="auto">
+
+x5-playsinline
+
+x5-video-player-type="h5"
+
+x5-video-player-fullscreen="true"
+
+x-webkit-airplay="allow"
+
+disablepictureinpicture
+
+controlslist="nodownload"
+
+>
+
+Seu navegador não suporta HTML5 Video.
+
 </video>
 
+</div>
 
-<button id="playBtn">
 
-▶ Reproduzir
+<!-- TELA DE ESPERA -->
 
-</button>
+<div id="waiting">
 
+<div id="waitingIcon">
+
+▶
+
+</div>
+
+<div id="waitingText">
+
+Aguardando transmissão...
+
+</div>
+
+</div>
+
+
+<!-- TELA DE ERRO -->
+
+<div id="errorScreen">
+
+<div id="errorTitle">
+
+Erro
+
+</div>
+
+<div id="errorText">
+
+Não foi possível reproduzir o vídeo.
+
+</div>
+
+</div>
 
 
 <script>
+var video = document.getElementById("video");
 
-var video =
-document.getElementById("video");
+var statusBox = document.getElementById("status");
+var statusText = document.getElementById("statusText");
 
-var statusBox =
-document.getElementById("status");
+var waiting = document.getElementById("waiting");
 
-var playBtn =
-document.getElementById("playBtn");
+var errorScreen = document.getElementById("errorScreen");
+var errorText = document.getElementById("errorText");
 
 
 var currentVideo = "";
 
+var connected = false;
 
+var loading = false;
 
-function setStatus(txt){
-
-statusBox.innerHTML = txt;
-
-}
-
-
-
-function buscarStatus(){
-
-
-var xhr =
-new XMLHttpRequest();
-
-
-xhr.open(
-"GET",
-"/status",
-true
-);
-
-
-xhr.onreadystatechange =
-function(){
-
-
-if(xhr.readyState == 4){
-
-
-if(xhr.status == 200){
-
-
-try{
-
-
-var data =
-JSON.parse(xhr.responseText);
+var retryTimer = null;
 
 
 
-if(data.ativo){
+function showStatus(title, text){
 
+    statusBox.style.display = "block";
 
+    document.getElementById("statusTitle").innerHTML = title;
 
-if(
-data.video &&
-data.video != currentVideo
-){
-
-
-currentVideo =
-data.video;
-
-
-
-setStatus(
-"Nova transmissão encontrada"
-);
-
-
-
-video.src =
-data.video;
-
-
-video.load();
-
-
+    statusText.innerHTML = text;
 
 }
 
 
 
-}else{
+function hideStatus(){
+
+    statusBox.style.opacity = "0";
+
+    setTimeout(function(){
+
+        statusBox.style.display = "none";
+
+    },500);
+
+}
 
 
-setStatus(
-"Aguardando transmissão..."
-);
+
+function showWaiting(){
+
+    waiting.style.display = "flex";
+
+}
+
+
+
+function hideWaiting(){
+
+    waiting.style.display = "none";
+
+}
+
+
+
+function showError(message){
+
+    errorScreen.style.display = "flex";
+
+    errorText.innerHTML = message;
+
+}
+
+
+
+function hideError(){
+
+    errorScreen.style.display = "none";
+
+}
+
+
+
+function resetPlayer(){
+
+    try{
+
+        video.pause();
+
+        video.removeAttribute("src");
+
+        video.load();
+
+    }catch(e){}
+
+}
+
+
+
+function startPlayback(){
+
+
+    var promise = video.play();
+
+
+    if(promise !== undefined){
+
+
+        promise.then(function(){
+
+
+            hideWaiting();
+
+            hideStatus();
+
+            hideError();
+
+
+        }).catch(function(){
+
+
+            /*
+             Alguns navegadores antigos
+             bloqueiam o primeiro play.
+             Tentaremos novamente.
+            */
+
+
+            setTimeout(function(){
+
+                startPlayback();
+
+            },1000);
+
+
+        });
+
+
+    }
+
+
+}
+
+/*
+====================================
+ X-STREAM PLAYER
+ COMUNICAÇÃO COM SERVIDOR
+====================================
+*/
+
+
+function buscarTransmissao(){
+
+
+    var xhr = new XMLHttpRequest();
+
+
+    xhr.open(
+        "GET",
+        "/status",
+        true
+    );
+
+
+    xhr.onreadystatechange = function(){
+
+
+        if(xhr.readyState == 4){
+
+
+            if(xhr.status == 200){
+
+
+                try{
+
+
+                    var data = JSON.parse(xhr.responseText);
+
+
+
+                    if(data.ativo && data.video){
+
+
+
+                        if(data.video != currentVideo){
+
+
+
+                            carregarMidia(data.video);
+
+
+
+                        }
+
+
+
+                    }else{
+
+
+                        showStatus(
+                            "X-Stream",
+                            "Aguardando transmissão..."
+                        );
+
+
+                        showWaiting();
+
+
+                    }
+
+
+
+                }catch(e){
+
+
+                    showStatus(
+                        "X-Stream",
+                        "Erro ao receber dados"
+                    );
+
+
+                }
+
+
+            }
+
+
+        }
+
+
+    };
+
+
+    xhr.send();
 
 
 }
 
 
 
-}catch(e){
+
+function detectarFormato(url){
 
 
-setStatus(
-"Erro JSON"
-);
+    var link = url.toLowerCase();
+
+
+
+    if(link.indexOf(".m3u8") > -1){
+
+        return "hls";
+
+    }
+
+
+    if(link.indexOf(".mp3") > -1){
+
+        return "audio";
+
+    }
+
+
+    if(link.indexOf(".aac") > -1){
+
+        return "audio";
+
+    }
+
+
+    if(link.indexOf(".wav") > -1){
+
+        return "audio";
+
+    }
+
+
+    if(link.indexOf(".ogg") > -1){
+
+        return "audio";
+
+    }
+
+
+    if(link.indexOf(".webm") > -1){
+
+        return "video";
+
+    }
+
+
+    if(link.indexOf(".mp4") > -1){
+
+        return "video";
+
+    }
+
+
+    return "video";
 
 
 }
 
 
 
-}
+
+function carregarMidia(url){
 
 
+    currentVideo = url;
+
+
+    loading = true;
+
+
+    hideError();
+
+
+    showStatus(
+        "X-Stream",
+        "Carregando transmissão..."
+    );
+
+
+    showWaiting();
+
+
+
+    var tipo = detectarFormato(url);
+
+
+
+    console.log(
+        "Formato detectado:",
+        tipo
+    );
+
+
+
+    video.src = url;
+
+
+    video.load();
+
+
+
 }
+/*
+====================================
+ EVENTOS DO PLAYER
+ AUTOPLAY + CONTROLE DE ESTADO
+====================================
+*/
+
+
+video.onloadedmetadata = function(){
+
+
+    showStatus(
+        "X-Stream",
+        "Vídeo carregado"
+    );
 
 
 };
 
 
 
-xhr.send();
+video.oncanplay = function(){
+
+
+    showStatus(
+        "X-Stream",
+        "Iniciando reprodução..."
+    );
+
+
+    startPlayback();
+
+
+};
+
+
+
+
+video.onplaying = function(){
+
+
+    loading = false;
+
+
+    hideWaiting();
+
+    hideStatus();
+
+    hideError();
+
+
+
+};
+
+
+
+
+video.onwaiting = function(){
+
+
+    showStatus(
+        "X-Stream",
+        "Carregando buffer..."
+    );
+
+
+};
+
+
+
+
+video.onstalled = function(){
+
+
+    showStatus(
+        "X-Stream",
+        "Reconectando transmissão..."
+    );
+
+
+};
+
+
+
+
+video.onerror = function(){
+
+
+    loading = false;
+
+
+    showError(
+        "Formato não suportado ou erro na transmissão"
+    );
+
+
+    showStatus(
+        "X-Stream",
+        "Erro ao reproduzir"
+    );
+
+
+};
+
+
+
+
+video.onended = function(){
+
+
+    showStatus(
+        "X-Stream",
+        "Transmissão finalizada"
+    );
+
+
+};
+
+
+
+
+/*
+====================================
+ INICIALIZAÇÃO
+====================================
+*/
+
+
+showStatus(
+    "X-Stream",
+    "Conectando ao servidor..."
+);
+
+
+
+showWaiting();
+
+
+
+buscarTransmissao();
+
+
+
+/*
+====================================
+ VERIFICAÇÃO CONTÍNUA
+====================================
+*/
+
+
+setInterval(function(){
+
+
+    buscarTransmissao();
+
+
+},3000);
+
+/*
+====================================
+ X-STREAM PLAYER
+ OTIMIZAÇÕES FINAIS
+====================================
+*/
+
+
+/*
+ Evita cache antigo do navegador
+ */
+
+function limparCache(url){
+
+    if(url.indexOf("?") > -1){
+
+        return url + "&t=" + new Date().getTime();
+
+    }else{
+
+        return url + "?t=" + new Date().getTime();
+
+    }
+
+}
+
+
+
+/*
+ Melhora carregamento de mídia
+ */
+
+function prepararMidia(url){
+
+    var novaUrl = limparCache(url);
+
+    video.src = novaUrl;
+
+    video.preload = "auto";
+
+    video.load();
+
+}
+
+
+
+/*
+ Reconexão automática
+ */
+
+function reconectar(){
+
+
+    if(currentVideo){
+
+
+        showStatus(
+            "X-Stream",
+            "Tentando reconectar..."
+        );
+
+
+        prepararMidia(currentVideo);
+
+
+        setTimeout(function(){
+
+
+            startPlayback();
+
+
+        },1000);
+
+
+    }
 
 
 }
 
 
 
-playBtn.onclick =
+/*
+ Quando perde conexão
+ */
+
+window.addEventListener(
+"online",
 function(){
 
 
-video.play();
+    showStatus(
+        "X-Stream",
+        "Internet restaurada"
+    );
+
+
+    reconectar();
+
+
+});
+
+
+
+/*
+ Quando fica offline
+ */
+
+window.addEventListener(
+"offline",
+function(){
+
+
+    showStatus(
+        "X-Stream",
+        "Sem conexão"
+    );
+
+
+});
+
+
+
+/*
+ Teclas de controle remoto
+ */
+
+document.onkeydown = function(e){
+
+
+    var tecla = e.keyCode;
+
+
+
+    // ENTER
+
+    if(tecla == 13){
+
+
+        startPlayback();
+
+
+    }
+
+
+
+    // Espaço
+
+    if(tecla == 32){
+
+
+        if(video.paused){
+
+            startPlayback();
+
+        }else{
+
+            video.pause();
+
+        }
+
+
+    }
+
 
 
 };
 
 
 
-video.onloadedmetadata =
-function(){
+
+/*
+ Controle de memória
+ */
+
+setInterval(function(){
 
 
-setStatus(
-"Vídeo carregado"
-);
+    if(video.readyState == 0 && currentVideo){
 
 
-};
+        video.load();
 
 
-
-video.oncanplay =
-function(){
+    }
 
 
-setStatus(
-"Pronto para reproduzir"
-);
-
-
-};
+},15000);
 
 
 
-video.onplaying =
-function(){
+
+/*
+ Inicialização final
+ */
+
+window.onload = function(){
 
 
-setStatus(
-"Transmitindo"
-);
-
-
-};
-
-
-
-video.onerror =
-function(){
-
-
-setStatus(
-"Erro ao carregar vídeo"
-);
+    showStatus(
+        "X-Stream",
+        "Player pronto"
+    );
 
 
 };
-
-
-
-setStatus(
-"Conectando..."
-);
-
-
-
-buscarStatus();
-
-
-
-setInterval(
-buscarStatus,
-3000
-);
-
-
 </script>
 
 </body>
+
 </html>
