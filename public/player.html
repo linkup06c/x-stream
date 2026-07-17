@@ -435,8 +435,8 @@ Não foi possível reproduzir.
 
 </div>
 
-<script>
 
+<script>
 // =====================================
 // X-STREAM PLAYER ENGINE FINAL
 // COMPATÍVEL TV / WEBVIEW
@@ -468,8 +468,84 @@ var dadosServidor = {};
 
 
 // =====================================
+// STATUS X-STREAM
+// =====================================
+
+
+function mostrarStatus(titulo,msg){
+
+
+var box =
+document.getElementById("statusBox");
+
+
+if(!box){
+
+return;
+
+}
+
+
+box.style.display="flex";
+
+
+
+var title =
+document.getElementById("statusTitle");
+
+
+var message =
+document.getElementById("statusMessage");
+
+
+
+if(title){
+
+title.textContent=titulo;
+
+}
+
+
+
+if(message){
+
+message.textContent=msg;
+
+}
+
+
+
+}
+
+
+
+
+
+function esconderStatus(){
+
+
+var box =
+document.getElementById("statusBox");
+
+
+if(box){
+
+box.style.display="none";
+
+}
+
+
+}
+
+
+
+
+
+
+// =====================================
 // TELA AGUARDANDO
 // =====================================
+
 
 function esconderAguardando(){
 
@@ -489,9 +565,12 @@ box.style.display="none";
 
 
 
+
+
 // =====================================
 // ERRO
 // =====================================
+
 
 function mostrarErro(msg){
 
@@ -506,21 +585,32 @@ if(box){
 box.style.display="flex";
 
 
-document.getElementById(
-"errorMessage"
-).innerHTML=msg;
+var erro =
+document.getElementById("errorMessage");
 
+
+if(erro){
+
+erro.textContent=msg;
 
 }
 
 
 }
+
+
+}
+
+
+
+
 
 
 
 // =====================================
 // LIMPAR MÍDIA
 // =====================================
+
 
 function limparMidia(){
 
@@ -544,6 +634,7 @@ mediaVideo.load();
 
 
 
+
 try{
 
 
@@ -563,6 +654,7 @@ mediaAudio.load();
 
 
 
+
 mediaImage.removeAttribute(
 "src"
 );
@@ -573,11 +665,18 @@ mediaImage.removeAttribute(
 
 
 
+
+
+
+
+
 // =====================================
 // RECEBER NOVA MÍDIA
 // =====================================
 
+
 function receberMidia(url){
+
 
 
 if(!url){
@@ -599,21 +698,27 @@ return;
 urlAtual=url;
 
 
+
 limparMidia();
+
+
+
+mostrarStatus(
+"X-Stream",
+"Analisando mídia..."
+);
+
 
 
 tentarVideo(url);
 
 
+
 }
-
-
-
-
-
 // =====================================
 // TENTAR VÍDEO
 // =====================================
+
 
 function tentarVideo(url){
 
@@ -630,6 +735,9 @@ mediaVideo.load();
 
 
 
+
+
+
 mediaVideo.onloadeddata=function(){
 
 
@@ -640,22 +748,31 @@ return;
 }
 
 
+
 confirmado=true;
+
 
 
 tipoAtual="video";
 
 
+
 mostrarVideo();
+
 
 
 esconderAguardando();
 
 
+
 iniciarVideo();
 
 
+
 };
+
+
+
 
 
 
@@ -673,7 +790,11 @@ mostrarVideo();
 esconderAguardando();
 
 
+
 };
+
+
+
 
 
 
@@ -691,7 +812,11 @@ esconderAguardando();
 
 
 
+
+
+
 mediaVideo.onerror=function(){
+
 
 
 if(confirmado){
@@ -701,10 +826,13 @@ return;
 }
 
 
+
 tentarAudio(url);
 
 
+
 };
+
 
 
 }
@@ -713,9 +841,13 @@ tentarAudio(url);
 
 
 
+
+
+
 // =====================================
 // TENTAR ÁUDIO
 // =====================================
+
 
 function tentarAudio(url){
 
@@ -743,13 +875,17 @@ return;
 }
 
 
+
 confirmado=true;
+
 
 
 tipoAtual="audio";
 
 
+
 mediaAudio.play();
+
 
 
 };
@@ -761,6 +897,7 @@ mediaAudio.play();
 mediaAudio.onerror=function(){
 
 
+
 if(confirmado){
 
 return;
@@ -768,7 +905,9 @@ return;
 }
 
 
+
 tentarImagem(url);
+
 
 
 };
@@ -779,9 +918,12 @@ tentarImagem(url);
 
 
 
+
+
 // =====================================
 // TENTAR IMAGEM
 // =====================================
+
 
 function tentarImagem(url){
 
@@ -805,9 +947,8 @@ mostrarImagem();
 esconderAguardando();
 
 
+
 };
-
-
 
 
 
@@ -823,7 +964,6 @@ mostrarErro(
 
 
 
-
 img.src=url;
 
 
@@ -833,9 +973,15 @@ img.src=url;
 
 
 
+
+
+
+
+
 // =====================================
 // CONTROLE DE EXIBIÇÃO
 // =====================================
+
 
 function esconderTodos(){
 
@@ -855,6 +1001,9 @@ mediaImage.style.display="none";
 
 
 
+
+
+
 function mostrarVideo(){
 
 
@@ -865,6 +1014,9 @@ mediaVideo.style.display="block";
 
 
 }
+
+
+
 
 
 
@@ -886,11 +1038,16 @@ mediaImage.style.display="block";
 
 
 
+
+
+
 // =====================================
 // INICIAR VÍDEO
 // =====================================
 
+
 function iniciarVideo(){
+
 
 
 var tentativa =
@@ -902,7 +1059,11 @@ mediaVideo.play();
 if(tentativa !== undefined){
 
 
+
 tentativa.then(function(){
+
+
+esconderStatus();
 
 
 esconderAguardando();
@@ -922,14 +1083,19 @@ iniciarVideo,
 );
 
 
+
 });
 
 
+
+}
+
+
+
 }
 
 
 
-}
 
 
 
@@ -952,13 +1118,18 @@ esconderAguardando();
 
 
 
+
 mediaVideo.onplaying=function(){
 
 
 esconderAguardando();
 
 
+esconderStatus();
+
+
 };
+
 
 
 
@@ -975,192 +1146,16 @@ esconderAguardando();
 
 
 
-// CORRIGIDO
-// antes estava aberto e quebrava todo o JS
-
 mediaVideo.onwaiting=function(){
 
 
+mostrarStatus(
 
-};
+"X-Stream",
 
-
-
-
-
-// =====================================
-// BUSCAR SERVIDOR
-// =====================================
-
-function verificarServidor(){
-
-
-var xhr =
-new XMLHttpRequest();
-
-
-
-xhr.open(
-
-"GET",
-
-"/status",
-
-true
+"Carregando..."
 
 );
-
-
-
-
-xhr.onreadystatechange=function(){
-
-
-if(
-
-xhr.readyState===4 &&
-
-xhr.status===200
-
-){
-
-
-try{
-
-
-var dados =
-JSON.parse(
-
-xhr.responseText
-
-);
-
-
-
-dadosServidor=dados;
-
-
-
-var url="";
-
-
-
-
-// FILA NOVA
-
-if(
-
-dados.fila &&
-
-dados.fila.length>0 &&
-
-dados.fila[dados.atual]
-
-){
-
-
-url =
-dados.fila[dados.atual].url;
-
-
-}
-
-
-
-
-
-// COMPATIBILIDADE ANTIGA
-
-if(!url && dados.video){
-
-
-url=dados.video;
-
-
-}
-
-
-
-
-
-if(
-
-dados.ativo &&
-
-url
-
-){
-
-
-if(
-
-url!==ultimaURL
-
-){
-
-
-ultimaURL=url;
-
-
-receberMidia(url);
-
-
-}
-
-
-
-}
-
-
-
-}catch(e){}
-
-
-
-}
-
-
-
-};
-
-
-
-xhr.send();
-
-
-}
-// =====================================
-// CONEXÃO INICIAL
-// =====================================
-
-
-verificarServidor();
-
-
-
-setInterval(
-
-verificarServidor,
-
-3000
-
-);
-
-
-
-
-
-// =====================================
-// PRÓXIMO VÍDEO AUTOMÁTICO
-// =====================================
-
-
-mediaVideo.onended=function(){
-
-
-    enviarComando(
-        "next"
-    );
 
 
 };
@@ -1169,537 +1164,17 @@ mediaVideo.onended=function(){
 
 
 
+mediaAudio.onplaying=function(){
 
 
-
-// =====================================
-// ENVIAR COMANDO SERVIDOR
-// =====================================
-
-
-function enviarComando(acao){
-
-
-var xhr =
-new XMLHttpRequest();
-
-
-
-xhr.open(
-
-"POST",
-
-"/controle",
-
-true
-
-);
-
-
-
-xhr.setRequestHeader(
-
-"Content-Type",
-
-"application/json"
-
-);
-
-
-
-xhr.send(
-
-JSON.stringify({
-
-acao:acao
-
-})
-
-);
-
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// RECUPERAÇÃO AUTOMÁTICA
-// =====================================
-
-
-function recuperarPlayer(){
-
-
-
-if(urlAtual){
-
-
-receberMidia(
-
-urlAtual
-
-);
-
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-
-
-mediaVideo.onerror=function(){
-
-
-
-setTimeout(
-
-recuperarPlayer,
-
-3000
-
-);
-
+esconderStatus();
 
 
 };
-
-
-
-
-
-
-
-
-mediaAudio.onerror=function(){
-
-
-
-setTimeout(
-
-recuperarPlayer,
-
-3000
-
-);
-
-
-
-};
-
-
-
-
-
-
-
-
-
-// =====================================
-// INTERNET
-// =====================================
-
-
-window.ononline=function(){
-
-
-verificarServidor();
-
-
-};
-
-
-
-
-
-
-window.onoffline=function(){
-
-
-};
-
-
-
-
-
-
-
-
-
-// =====================================
-// CONTROLE REMOTO TV
-// =====================================
-
-
-document.onkeydown=function(e){
-
-
-
-var tecla=e.keyCode;
-
-
-
-
-
-// ENTER
-
-if(tecla===13){
-
-
-
-if(tipoAtual==="video"){
-
-
-
-iniciarVideo();
-
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-// ESPAÇO PLAY / PAUSE
-
-
-if(tecla===32){
-
-
-
-if(tipoAtual==="video"){
-
-
-
-if(mediaVideo.paused){
-
-
-mediaVideo.play();
-
-
-
-}else{
-
-
-mediaVideo.pause();
-
-
-
-}
-
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-
-// PAGE DOWN = PRÓXIMO
-
-
-if(tecla===34){
-
-
-
-enviarComando(
-
-"next"
-
-);
-
-
-
-}
-
-
-
-
-
-
-
-// PAGE UP = ANTERIOR
-
-
-if(tecla===33){
-
-
-
-enviarComando(
-
-"previous"
-
-);
-
-
-
-}
-
-
-
-};
-
-
-
-
-
-
-
-
-
-// =====================================
-// LIMPEZA DE MEMÓRIA TV
-// =====================================
-
-
-setInterval(function(){
-
-
-
-try{
-
-
-
-if(
-
-mediaVideo.readyState===0 &&
-
-tipoAtual==="video"
-
-){
-
-
-
-mediaVideo.load();
-
-
-
-}
-
-
-
-}catch(e){}
-
-
-
-},30000);
-
-
-
-
-
-
-
-
-
-// =====================================
-// FINAL
-// =====================================
-
-
-// =====================================
-// X-STREAM TV CURSOR HIDE ENGINE
-// MANTIDO ORIGINAL
-// =====================================
-
-
-(function(){
-
-
-    function esconderCursor(){
-
-
-        try{
-
-
-            document.documentElement.style.cursor = "none";
-
-
-            document.body.style.cursor = "none";
-
-
-
-            var elementos =
-            document.querySelectorAll("*");
-
-
-
-            for(
-                var i = 0;
-                i < elementos.length;
-                i++
-            ){
-
-
-                elementos[i].style.cursor="none";
-
-
-            }
-
-
-
-        }catch(e){}
-
-
-
-    }
-
-
-
-
-
-
-    // aplicar ao iniciar
-
-    esconderCursor();
-
-
-
-
-
-
-    // reaplicar periodicamente
-
-    setInterval(function(){
-
-
-        esconderCursor();
-
-
-    },1000);
-
-
-
-
-
-
-    // quando mexer no controle/mouse
-
-    document.addEventListener(
-        "mousemove",
-        esconderCursor,
-        false
-    );
-
-
-
-    document.addEventListener(
-        "mousedown",
-        esconderCursor,
-        false
-    );
-
-
-
-    document.addEventListener(
-        "touchstart",
-        esconderCursor,
-        false
-    );
-
-
-
-    document.addEventListener(
-        "keydown",
-        esconderCursor,
-        false
-    );
-
-
-
-
-
-
-    // tenta entrar em modo fullscreen
-
-    function fullscreen(){
-
-
-        try{
-
-
-            var tela =
-            document.documentElement;
-
-
-
-            if(
-                tela.requestFullscreen
-            ){
-
-
-                tela.requestFullscreen();
-
-
-            }
-
-
-            else if(
-                tela.webkitRequestFullscreen
-            ){
-
-
-                tela.webkitRequestFullscreen();
-
-
-            }
-
-
-
-        }catch(e){}
-
-
-
-    }
-
-
-
-
-
-    // primeira interação da TV
-
-    document.addEventListener(
-        "click",
-        fullscreen,
-        {
-            once:true
-        }
-    );
-
-
-
-})();
-
-
 </script>
 
 
 </body>
+
 
 </html>
