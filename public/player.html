@@ -1,74 +1,65 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 
 <head>
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
-<title>X-Stream Sync Player V3</title>
-
+<title>X-Stream Player V4</title>
 
 
 <style>
 
-
-/* =====================================
-   X-STREAM SYNC PLAYER V3
-   BASE COMPATÍVEL TV / WEBVIEW
-===================================== */
-
-
-html,
-body{
+html,body{
 
 margin:0;
-
 padding:0;
 
 width:100%;
-
 height:100%;
 
 background:#000;
 
 overflow:hidden;
 
-font-family:Arial,Helvetica,sans-serif;
+font-family:Arial;
 
-color:white;
+}
+
+
+#video{
+
+width:100%;
+height:100%;
+
+object-fit:contain;
+
+background:#000;
+
+display:none;
 
 }
 
 
 
-
-
-/* =====================================
-   VIDEO
-===================================== */
-
-
-#mediaVideo{
+#status{
 
 position:fixed;
 
-top:0;
+top:20px;
+left:20px;
 
-left:0;
+background:rgba(0,0,0,.7);
 
-width:100%;
+padding:15px 20px;
 
-height:100%;
+border-radius:10px;
 
-background:#000;
+color:white;
 
-object-fit:contain;
-
-display:none;
+font-size:22px;
 
 z-index:10;
 
@@ -76,296 +67,70 @@ z-index:10;
 
 
 
-
-
-video{
-
-outline:none;
-
-}
-
-
-
-
-
-/* =====================================
-   STATUS
-===================================== */
-
-
-#status{
-
+#aguarde{
 
 position:fixed;
-
-
-top:20px;
-
-
-left:20px;
-
-
-background:rgba(0,0,0,.75);
-
-
-padding:15px 20px;
-
-
-border-radius:10px;
-
-
-z-index:9999;
-
-
-}
-
-
-
-#statusTitle{
-
-
-font-size:24px;
-
-
-font-weight:bold;
-
-
-}
-
-
-
-#statusMessage{
-
-
-font-size:18px;
-
-
-margin-top:5px;
-
-
-}
-
-
-
-
-
-/* =====================================
-   AGUARDANDO
-===================================== */
-
-
-#waiting{
-
-
-position:fixed;
-
-
-top:0;
-
-
-left:0;
-
 
 width:100%;
-
-
 height:100%;
-
-
-background:#000;
-
 
 display:flex;
 
-
 align-items:center;
-
-
 justify-content:center;
-
 
 flex-direction:column;
 
+color:white;
 
 font-size:28px;
 
-
-z-index:5000;
-
-
 }
-
-
 
 
 
 .loader{
 
-
-width:55px;
-
-
-height:55px;
-
+width:50px;
+height:50px;
 
 border-radius:50%;
 
+border:5px solid #555;
 
-border:6px solid #555;
+border-top-color:white;
 
+animation:girar 1s linear infinite;
 
-border-top-color:#fff;
-
-
-animation:spin 1s linear infinite;
-
-
-margin-bottom:25px;
-
+margin-bottom:20px;
 
 }
 
 
 
+@keyframes girar{
 
-
-@keyframes spin{
-
-
-from{
-
-transform:rotate(0deg);
-
-}
-
-
-to{
+100%{
 
 transform:rotate(360deg);
 
 }
 
-
 }
-
-
-
-
-
-
-/* =====================================
-   ERRO
-===================================== */
-
-
-#errorBox{
-
-
-position:fixed;
-
-
-top:0;
-
-
-left:0;
-
-
-width:100%;
-
-
-height:100%;
-
-
-background:#000;
-
-
-display:none;
-
-
-align-items:center;
-
-
-justify-content:center;
-
-
-flex-direction:column;
-
-
-text-align:center;
-
-
-z-index:20000;
-
-
-}
-
-
-
-
-#errorTitle{
-
-
-font-size:40px;
-
-
-margin-bottom:20px;
-
-
-}
-
-
-
-
-#errorMessage{
-
-
-font-size:22px;
-
-
-max-width:80%;
-
-
-}
-
-
-
-
-
-/* =====================================
-   COMPATIBILIDADE TV
-===================================== */
-
-
-*{
-
--webkit-tap-highlight-color:transparent;
-
-}
-
 
 
 </style>
 
-
 </head>
-
-
 
 
 <body>
 
 
 
-
-
-<!-- =====================================
-     PLAYER PRINCIPAL
-===================================== -->
-
-
 <video
 
-id="mediaVideo"
+id="video"
 
 autoplay
 
@@ -375,95 +140,27 @@ webkit-playsinline
 
 preload="auto"
 
->
-
-</video>
+></video>
 
 
-
-
-
-
-
-<!-- =====================================
-     STATUS
-===================================== -->
 
 
 <div id="status">
-
-
-<div id="statusTitle">
 
 X-Stream
 
 </div>
 
 
-<div id="statusMessage">
 
-Conectando...
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-
-<!-- =====================================
-     AGUARDANDO
-===================================== -->
-
-
-<div id="waiting">
-
+<div id="aguarde">
 
 <div class="loader"></div>
-
-
-<div>
 
 Aguardando transmissão...
 
 </div>
 
-
-</div>
-
-
-
-
-
-
-
-<!-- =====================================
-     ERRO
-===================================== -->
-
-
-<div id="errorBox">
-
-
-<div id="errorTitle">
-
-Erro
-
-</div>
-
-
-<div id="errorMessage">
-
-Não foi possível reproduzir.
-
-</div>
-
-
-</div>
 
 
 
@@ -472,63 +169,151 @@ Não foi possível reproduzir.
 <script>
 
 
+const video =
+document.getElementById("video");
+
+const status =
+document.getElementById("status");
+
+const aguarde =
+document.getElementById("aguarde");
+
+
+
+let videoAtual="";
+
+let indiceAtual=-1;
+
+
+
+
+
+function mostrarStatus(texto){
+
+status.innerHTML =
+"X-Stream<br>"+texto;
+
+}
+
+
+
+
+// =====================================
+// BUSCAR SERVIDOR
+// =====================================
+
+
+function atualizar(){
+
+
+fetch("/status")
+
+.then(r=>r.json())
+
+.then(dados=>{
+
+
+if(
+!dados.ativo ||
+!dados.fila.length
+){
+
+
+mostrarStatus(
+"Aguardando transmissão..."
+);
+
+
+return;
+
+
+}
+
+
+
+let item =
+dados.fila[dados.atual];
+
+
+
+if(!item){
+
+return;
+
+}
+
+
+
+if(
+item.url !== videoAtual
+){
+
+
+videoAtual =
+item.url;
+
+
+indiceAtual =
+dados.atual;
+
+
+
+carregar(
+item.url
+);
+
+
+}
+
+
+
+});
+
+
+}
+
+
+
+
+
 
 // =====================================
-// X-STREAM SYNC ENGINE V3
-// MOTOR PRINCIPAL
+// CARREGAR VÍDEO
 // =====================================
 
 
-var mediaVideo =
-document.getElementById("mediaVideo");
+function carregar(url){
 
 
 
-var urlAtual = "";
-
-var ultimoVideo = "";
-
-var primeiraCarga = true;
+mostrarStatus(
+"Carregando vídeo..."
+);
 
 
 
-var estadoServidor = {};
+aguarde.style.display="flex";
+
+video.style.display="none";
 
 
 
+video.pause();
+
+
+video.removeAttribute(
+"src"
+);
+
+
+video.load();
 
 
 
-
-// =====================================
-// STATUS
-// =====================================
+video.src=url;
 
 
-function mostrarStatus(titulo,msg){
-
-
-    var box =
-    document.getElementById("status");
-
-
-    if(box){
-
-        box.style.display="block";
-
-    }
-
-
-
-    document.getElementById(
-        "statusTitle"
-    ).innerHTML=titulo;
-
-
-
-    document.getElementById(
-        "statusMessage"
-    ).innerHTML=msg;
+video.load();
 
 
 
@@ -538,21 +323,58 @@ function mostrarStatus(titulo,msg){
 
 
 
-function esconderStatus(){
 
 
-    var box =
-    document.getElementById("status");
+// =====================================
+// QUANDO PRONTO
+// =====================================
 
 
-    if(box){
-
-        box.style.display="none";
-
-    }
+video.oncanplay=function(){
 
 
-}
+
+video.style.display="block";
+
+
+aguarde.style.display="none";
+
+
+
+video.play()
+
+.catch(()=>{
+
+
+mostrarStatus(
+"Aguardando reprodução..."
+);
+
+
+});
+
+
+};
+
+
+
+
+
+
+
+// =====================================
+// REPRODUZINDO
+// =====================================
+
+
+video.onplaying=function(){
+
+
+status.style.display="none";
+
+
+};
+
 
 
 
@@ -565,614 +387,56 @@ function esconderStatus(){
 // =====================================
 
 
-function mostrarErro(msg){
-
-
-    var box =
-    document.getElementById("errorBox");
-
-
-    box.style.display="flex";
-
-
-
-    document.getElementById(
-        "errorMessage"
-    ).innerHTML=msg;
-
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// ESCONDER ESPERA
-// =====================================
-
-
-function esconderAguardando(){
-
-
-    var box =
-    document.getElementById("waiting");
-
-
-    if(box){
-
-        box.style.display="none";
-
-    }
-
-
-}
-
-
-
-
-
-
-
-// =====================================
-// CARREGAR VÍDEO
-// =====================================
-
-
-function carregarVideo(url){
-
-
-
-    if(!url){
-
-        return;
-
-    }
-
-
-
-    /*
-       evita recarregar o mesmo vídeo
-    */
-
-
-    if(urlAtual === url){
-
-        return;
-
-    }
-
-
-
-    urlAtual=url;
-
-
-
-    mostrarStatus(
-        "X-Stream",
-        "Carregando vídeo..."
-    );
-
-
-
-    mediaVideo.pause();
-
-
-
-    mediaVideo.removeAttribute(
-        "src"
-    );
-
-
-
-    mediaVideo.load();
-
-
-
-
-    mediaVideo.src=url;
-
-
-
-    mediaVideo.load();
-
-
-
-}
-
-
-
-
-
-
-
-// =====================================
-// QUANDO O VÍDEO ESTIVER PRONTO
-// =====================================
-
-
-mediaVideo.oncanplay=function(){
-
-
-
-    mediaVideo.style.display=
-    "block";
-
-
-
-    esconderAguardando();
-
-
-
-    iniciarReproducao();
-
-
-
-};
-
-
-
-
-
-
-
-
-// =====================================
-// INICIAR PLAY
-// =====================================
-
-
-function iniciarReproducao(){
-
-
-
-    var p =
-    mediaVideo.play();
-
-
-
-    if(p !== undefined){
-
-
-
-        p.then(function(){
-
-
-            esconderStatus();
-
-
-        })
-
-
-        .catch(function(){
-
-
-            mostrarStatus(
-                "X-Stream",
-                "Aguardando autorização..."
-            );
-
-
-        });
-
-
-
-    }
-
-
-}
-
-
-
-
-
-
-
-// =====================================
-// EVENTOS DO VÍDEO
-// =====================================
-
-
-
-mediaVideo.onplaying=function(){
-
-
-    esconderStatus();
-
-
-};
-
-
-
-
-
-mediaVideo.onwaiting=function(){
-
-
-    mostrarStatus(
-        "X-Stream",
-        "Carregando..."
-    );
-
-
-};
-
-
-
-
-
-mediaVideo.onerror=function(){
-
-
-    mostrarStatus(
-        "X-Stream",
-        "Erro no vídeo..."
-    );
-
-
-};
-
-
-
-
-
-
-// =====================================
-// BUSCAR SERVIDOR
-// =====================================
-
-
-function buscarServidor(){
-
-
-
-    var xhr =
-    new XMLHttpRequest();
-
-
-
-    xhr.open(
-        "GET",
-        "/status",
-        true
-    );
-
-
-
-    xhr.onreadystatechange=function(){
-
-
-        if(
-            xhr.readyState===4 &&
-            xhr.status===200
-        ){
-
-
-            try{
-
-
-                var dados =
-                JSON.parse(
-                    xhr.responseText
-                );
-
-
-
-                processarServidor(
-                    dados
-                );
-
-
-
-            }catch(e){
-
-
-
-            }
-
-
-
-        }
-
-
-
-    };
-
-
-
-    xhr.send();
-
-
-
-}
-
-
-
-
-
-
-
-// =====================================
-// PROCESSAR RESPOSTA
-// =====================================
-
-
-function processarServidor(dados){
-
-
-
-    estadoServidor=dados;
-
-
-
-    if(!dados.ativo){
-
-
-        mostrarStatus(
-            "X-Stream",
-            "Aguardando transmissão..."
-        );
-
-
-        return;
-
-
-    }
-
-
-
-
-
-
-    /*
-       COMPATIBILIDADE:
-       SERVIDOR ANTIGO + NOVO
-    */
-
-
-    var video="";
-
-
-
-    if(dados.video){
-
-
-        video=dados.video;
-
-
-    }
-
-
-
-    else if(
-        dados.fila &&
-        dados.fila[dados.atual]
-    ){
-
-
-        video =
-        dados.fila[dados.atual].url;
-
-
-    }
-
-
-
-
-
-
-    if(video){
-
-
-
-        if(video !== ultimoVideo){
-
-
-
-            ultimoVideo=video;
-
-
-
-            carregarVideo(
-                video
-            );
-
-
-
-        }
-
-
-
-    }
-
-
-
-}
-
-
-
-
-
-// =====================================
-// INICIAR CONEXÃO
-// =====================================
+video.onerror=function(){
 
 
 mostrarStatus(
-    "X-Stream",
-    "Conectando..."
+"Erro no vídeo"
+);
+
+
+};
+
+
+
+
+
+
+
+// =====================================
+// TERMINOU
+// =====================================
+
+
+video.onended=function(){
+
+
+
+mostrarStatus(
+"Próximo vídeo..."
 );
 
 
 
-buscarServidor();
+fetch("/terminou",{
 
+method:"POST"
 
+})
 
-setInterval(
-    buscarServidor,
-    3000
-);
+.then(()=>{
 
-// =====================================
-// SINCRONIZAÇÃO GLOBAL
-// PLAY / PAUSE / TEMPO
-// =====================================
 
+videoAtual="";
 
 
-var ultimoAjusteTempo = 0;
+atualizar();
 
 
+});
 
-function sincronizarEstado(){
 
-
-
-    if(!estadoServidor){
-
-        return;
-
-    }
-
-
-
-    /*
-       PLAY GLOBAL
-    */
-
-
-    if(
-        estadoServidor.estado === "playing"
-    ){
-
-
-        if(mediaVideo.paused){
-
-
-            mediaVideo.play()
-            .catch(function(){});
-
-
-        }
-
-
-    }
-
-
-
-
-
-
-    /*
-       PAUSE GLOBAL
-    */
-
-
-    if(
-        estadoServidor.estado === "paused"
-    ){
-
-
-        if(!mediaVideo.paused){
-
-
-            mediaVideo.pause();
-
-
-        }
-
-
-    }
-
-
-
-
-
-    /*
-       SINCRONIZA TEMPO
-       evita ficar pulando toda hora
-    */
-
-
-    if(
-        typeof estadoServidor.posicao === "number"
-    ){
-
-
-
-        var agora =
-        Date.now();
-
-
-
-        if(
-            agora - ultimoAjusteTempo > 5000
-        ){
-
-
-
-            if(
-                mediaVideo.duration
-            ){
-
-
-
-                var diferenca =
-                Math.abs(
-
-                mediaVideo.currentTime -
-                estadoServidor.posicao
-
-                );
-
-
-
-
-                if(
-    diferenca > 5 &&
-    mediaVideo.paused
-){
-
-    mediaVideo.currentTime =
-    estadoServidor.posicao;
-
-}
-
-
-
-            }
-
-
-
-            ultimoAjusteTempo=agora;
-
-
-
-        }
-
-
-
-    }
-
-
-
-}
-
-
-
-
-setInterval(
-    sincronizarEstado,
-    2000
-);
-
-
+};
 
 
 
@@ -1181,397 +445,25 @@ setInterval(
 
 
 // =====================================
-// ENVIAR COMANDO AO SERVIDOR
+// CONTROLE REMOTO
 // =====================================
-
-
-
-function enviarComando(acao,valor){
-
-
-
-    var xhr =
-    new XMLHttpRequest();
-
-
-
-    xhr.open(
-        "POST",
-        "/controle",
-        true
-    );
-
-
-
-    xhr.setRequestHeader(
-        "Content-Type",
-        "application/json"
-    );
-
-
-
-    var dados={
-
-        acao:acao
-
-    };
-
-
-
-    if(valor !== undefined){
-
-
-        dados.valor=valor;
-
-
-    }
-
-
-
-    xhr.send(
-        JSON.stringify(dados)
-    );
-
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// PLAY / PAUSE
-// =====================================
-
-
-
-function alternarPlay(){
-
-
-
-    if(mediaVideo.paused){
-
-
-        enviarComando(
-            "play"
-        );
-
-
-
-    }else{
-
-
-        enviarComando(
-            "pause",
-            mediaVideo.currentTime
-        );
-
-
-    }
-
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// AVANÇAR / VOLTAR
-// =====================================
-
-
-
-function avancarTempo(){
-
-
-    enviarComando(
-
-        "seek",
-
-        mediaVideo.currentTime + 10
-
-    );
-
-
-}
-
-
-
-
-
-
-
-function voltarTempo(){
-
-
-    var tempo =
-    mediaVideo.currentTime - 10;
-
-
-
-    if(tempo < 0){
-
-        tempo=0;
-
-    }
-
-
-
-    enviarComando(
-
-        "seek",
-
-        tempo
-
-    );
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// VOLUME
-// =====================================
-
-
-
-function volumeMais(){
-
-
-
-    var v =
-    mediaVideo.volume + 0.1;
-
-
-
-    if(v>1){
-
-        v=1;
-
-    }
-
-
-
-    enviarComando(
-        "volume",
-        v
-    );
-
-
-}
-
-
-
-
-
-
-
-function volumeMenos(){
-
-
-
-    var v =
-    mediaVideo.volume - 0.1;
-
-
-
-    if(v<0){
-
-        v=0;
-
-    }
-
-
-
-    enviarComando(
-        "volume",
-        v
-    );
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// PRÓXIMO / ANTERIOR
-// =====================================
-
-
-
-function proximoVideo(){
-
-
-    enviarComando(
-        "next"
-    );
-
-
-}
-
-
-
-
-
-
-
-function videoAnterior(){
-
-
-    enviarComando(
-        "previous"
-    );
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================================
-// CONTROLE REMOTO TV
-// =====================================
-
 
 
 document.onkeydown=function(e){
 
 
+if(e.keyCode===34){
 
-    var tecla =
-    e.keyCode;
+proximo();
 
+}
 
 
-    switch(tecla){
+if(e.keyCode===33){
 
+anterior();
 
-
-        // ENTER / OK
-
-        case 13:
-
-            alternarPlay();
-
-        break;
-
-
-
-
-
-        // ESPAÇO
-
-        case 32:
-
-            alternarPlay();
-
-        break;
-
-
-
-
-
-        // DIREITA
-
-        case 39:
-
-            avancarTempo();
-
-        break;
-
-
-
-
-
-        // ESQUERDA
-
-        case 37:
-
-            voltarTempo();
-
-        break;
-
-
-
-
-
-        // CIMA
-
-        case 38:
-
-            volumeMais();
-
-        break;
-
-
-
-
-
-        // BAIXO
-
-        case 40:
-
-            volumeMenos();
-
-        break;
-
-
-
-
-
-        // PAGE DOWN
-
-        case 34:
-
-            proximoVideo();
-
-        break;
-
-
-
-
-
-        // PAGE UP
-
-        case 33:
-
-            videoAnterior();
-
-        break;
-
-
-
-    }
-
+}
 
 
 };
@@ -1580,75 +472,14 @@ document.onkeydown=function(e){
 
 
 
+function proximo(){
 
 
+fetch("/next",{
 
+method:"POST"
 
-// =====================================
-// CLIQUE NO VÍDEO
-// =====================================
-
-
-
-mediaVideo.onclick=function(){
-
-
-    alternarPlay();
-
-
-};
-
-
-
-
-
-
-
-
-
-// =====================================
-// QUANDO TERMINAR
-// AVANÇA FILA
-// =====================================
-
-
-
-mediaVideo.onended=function(){
-
-
-    enviarComando(
-        "next"
-    );
-
-
-};
-
-
-
-// =====================================
-// RECUPERAÇÃO AUTOMÁTICA
-// TV / WEBVIEW
-// =====================================
-
-
-function recuperarVideo(){
-
-
-    if(urlAtual){
-
-
-        mostrarStatus(
-            "X-Stream",
-            "Recuperando vídeo..."
-        );
-
-
-        carregarVideo(
-            urlAtual
-        );
-
-
-    }
+});
 
 
 }
@@ -1656,157 +487,49 @@ function recuperarVideo(){
 
 
 
+function anterior(){
 
 
+fetch("/previous",{
 
-mediaVideo.onerror=function(){
+method:"POST"
 
-
-
-    mostrarStatus(
-        "X-Stream",
-        "Tentando recuperar..."
-    );
+});
 
 
-
-    setTimeout(
-
-        recuperarVideo,
-
-        5000
-
-    );
-
-
-
-};
-
-
-
+}
 
 
 
 
 // =====================================
-// INTERNET
+// INICIALIZAÇÃO
 // =====================================
-
-
-
-window.ononline=function(){
-
-
-
-    mostrarStatus(
-        "X-Stream",
-        "Internet restaurada"
-    );
-
-
-
-    buscarServidor();
-
-
-
-};
-
-
-
-
-
-
-
-window.onoffline=function(){
-
-
-
-    mostrarStatus(
-        "X-Stream",
-        "Sem conexão"
-    );
-
-
-};
-
-
-
-
-
-
-
-
-
-// =====================================
-// EVITAR RELOAD CONSTANTE
-// MEMÓRIA TV
-// =====================================
-
-
-
-setInterval(function(){
-
-
-
-    try{
-
-
-        if(
-
-            mediaVideo.readyState === 0 &&
-
-            urlAtual
-
-        ){
-
-
-            mediaVideo.load();
-
-
-        }
-
-
-
-    }catch(e){}
-
-
-
-},30000);
-
-
-
-
-
-
-
-
-// =====================================
-// INICIALIZAÇÃO FINAL
-// =====================================
-
 
 
 mostrarStatus(
-    "X-Stream",
-    "Player pronto"
+"Conectando..."
 );
+
+
+
+atualizar();
+
+
+
+setInterval(
+
+atualizar,
+
+3000
+
+);
+
+
+
 </script>
+
 
 </body>
 
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
