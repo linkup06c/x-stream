@@ -7,7 +7,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>X-Stream Controle V3</title>
+<title>X-Stream Controle V4</title>
 
 
 <style>
@@ -39,18 +39,13 @@ text-align:center;
 
 .box{
 
-
 background:#222;
-
 
 padding:20px;
 
-
 border-radius:12px;
 
-
 margin-bottom:20px;
-
 
 }
 
@@ -58,44 +53,35 @@ margin-bottom:20px;
 
 input{
 
-
 width:100%;
 
-
-padding:12px;
-
+padding:14px;
 
 font-size:18px;
 
-
 box-sizing:border-box;
 
+border-radius:8px;
+
+border:0;
 
 }
 
 
 
-
 button{
-
 
 padding:12px 18px;
 
-
 margin:5px;
-
 
 border:0;
 
-
 border-radius:8px;
-
 
 font-size:16px;
 
-
 cursor:pointer;
-
 
 }
 
@@ -103,33 +89,77 @@ cursor:pointer;
 
 button:active{
 
-
 transform:scale(.95);
-
 
 }
 
 
 
-
-#estado,
-#fila{
-
+#lista{
 
 background:#000;
 
-
 padding:15px;
 
+border-radius:10px;
+
+}
+
+
+
+.item{
+
+display:flex;
+
+justify-content:space-between;
+
+align-items:center;
+
+background:#222;
+
+padding:12px;
+
+margin-bottom:10px;
 
 border-radius:8px;
 
+}
 
-line-height:25px;
 
 
-overflow-wrap:anywhere;
+.nome{
 
+font-size:18px;
+
+}
+
+
+
+.excluir{
+
+background:#b00020;
+
+color:white;
+
+}
+
+
+
+.controle{
+
+background:#0066cc;
+
+color:white;
+
+}
+
+
+
+.limpar{
+
+background:#aa0000;
+
+color:white;
 
 }
 
@@ -146,10 +176,9 @@ overflow-wrap:anywhere;
 
 <h1>
 
-X-Stream Controle V3
+X-Stream Controle V4
 
 </h1>
-
 
 
 
@@ -159,32 +188,28 @@ X-Stream Controle V3
 
 <h2>
 
-Adicionar mídia
+Adicionar vídeo
 
 </h2>
-
 
 
 <input
 
 id="url"
 
-placeholder="Cole o link do vídeo"
+placeholder="Cole a URL do vídeo"
 
 >
-
 
 
 <br><br>
 
 
-
-<button onclick="enviar()">
+<button onclick="adicionar()">
 
 Adicionar
 
 </button>
-
 
 
 </div>
@@ -194,51 +219,20 @@ Adicionar
 
 
 
-
 <div class="box">
 
 
 <h2>
 
-Controles
+Controle
 
 </h2>
 
 
 
-<button onclick="comando('play')">
-
-▶ Play
-
-</button>
-
-
-
-<button onclick="comando('pause')">
-
-⏸ Pause
-
-</button>
-
-
-
-<button onclick="seek(-10)">
-
-⏪ -10s
-
-</button>
-
-
-
-<button onclick="seek(10)">
-
-⏩ +10s
-
-</button>
-
-
-
-<button onclick="comando('previous')">
+<button 
+class="controle"
+onclick="anterior()">
 
 ◀ Anterior
 
@@ -246,17 +240,21 @@ Controles
 
 
 
-<button onclick="comando('next')">
+<button
+class="controle"
+onclick="proximo()">
 
-▶ Próximo
+Próximo ▶
 
 </button>
 
 
 
-<button onclick="limpar()">
+<button
+class="limpar"
+onclick="limpar()">
 
-🗑 Limpar
+Limpar lista
 
 </button>
 
@@ -269,55 +267,24 @@ Controles
 
 
 
-
 <div class="box">
 
 
 <h2>
 
-Estado
+Fila atual
 
 </h2>
 
 
-
-<div id="estado">
+<div id="lista">
 
 Carregando...
 
 </div>
 
 
-
 </div>
-
-
-
-
-
-
-
-<div class="box">
-
-
-<h2>
-
-Fila
-
-</h2>
-
-
-
-<div id="fila">
-
-Vazia
-
-</div>
-
-
-
-</div>
-
 
 
 
@@ -327,47 +294,31 @@ Vazia
 <script>
 
 
-// =====================================
-// SERVIDOR
-// =====================================
-
-
-const servidor =
-
-"https://x-stream-56ya.onrender.com";
-
+const servidor="";
 
 
 
 
 
 // =====================================
-// ENVIAR URL
+// ADICIONAR
 // =====================================
 
 
-function enviar(){
+function adicionar(){
 
 
 
 let url =
-
 document.getElementById("url").value.trim();
-
 
 
 
 if(!url){
 
-alert(
-"Digite uma URL"
-);
-
 return;
 
 }
-
-
 
 
 
@@ -380,14 +331,10 @@ servidor+"/enviar",
 
 method:"POST",
 
-
 headers:{
 
-
 "Content-Type":
-
 "application/json"
-
 
 },
 
@@ -404,8 +351,6 @@ url:url
 
 )
 
-.then(r=>r.json())
-
 .then(()=>{
 
 
@@ -415,9 +360,7 @@ document.getElementById("url").value="";
 atualizar();
 
 
-
 });
-
 
 
 }
@@ -429,38 +372,90 @@ atualizar();
 
 
 // =====================================
-// COMANDO
+// PRÓXIMO
 // =====================================
 
 
-function comando(acao){
+function proximo(){
+
+
+fetch(
+
+servidor+"/next",
+
+{
+
+method:"POST"
+
+}
+
+);
+
+
+}
+
+
+
+
+
+
+// =====================================
+// ANTERIOR
+// =====================================
+
+
+function anterior(){
+
+
+fetch(
+
+servidor+"/previous",
+
+{
+
+method:"POST"
+
+}
+
+);
+
+
+}
+
+
+
+
+
+
+// =====================================
+// EXCLUIR
+// =====================================
+
+
+function remover(index){
 
 
 
 fetch(
 
-servidor+"/controle",
+servidor+"/remover",
 
 {
 
 
 method:"POST",
 
-
 headers:{
 
-
 "Content-Type":
-
 "application/json"
-
 
 },
 
 
 body:JSON.stringify({
 
-acao:acao
+index:index
 
 })
 
@@ -479,102 +474,7 @@ atualizar();
 });
 
 
-
 }
-
-
-
-
-
-
-
-
-// =====================================
-// SEEK
-// =====================================
-
-
-function seek(valor){
-
-
-
-fetch(
-
-servidor+"/status"
-
-)
-
-.then(r=>r.json())
-
-
-.then(dados=>{
-
-
-
-let nova =
-
-Number(dados.posicao || 0)
-
-+
-
-valor;
-
-
-
-
-if(nova<0){
-
-nova=0;
-
-}
-
-
-
-
-
-fetch(
-
-servidor+"/controle",
-
-{
-
-
-method:"POST",
-
-
-headers:{
-
-
-"Content-Type":
-
-"application/json"
-
-
-},
-
-
-body:JSON.stringify({
-
-acao:"seek",
-
-valor:nova
-
-})
-
-
-}
-
-
-);
-
-
-
-});
-
-
-
-}
-
 
 
 
@@ -601,7 +501,6 @@ method:"POST"
 
 }
 
-
 )
 
 .then(()=>{
@@ -622,7 +521,7 @@ atualizar();
 
 
 // =====================================
-// ATUALIZAR
+// ATUALIZAR LISTA
 // =====================================
 
 
@@ -643,8 +542,78 @@ servidor+"/status"
 .then(dados=>{
 
 
+let html="";
 
-mostrarEstado(dados);
+
+
+if(
+!dados.fila ||
+dados.fila.length===0
+){
+
+
+html="Fila vazia";
+
+
+}else{
+
+
+
+dados.fila.forEach(
+(item,index)=>{
+
+
+let atual="";
+
+
+if(
+index===dados.atual
+){
+
+atual="▶ ";
+
+}
+
+
+
+html +=
+
+`
+<div class="item">
+
+<div class="nome">
+
+${atual}
+
+${item.nome}
+
+</div>
+
+
+<button 
+class="excluir"
+onclick="remover(${index})">
+
+Excluir
+
+</button>
+
+
+</div>
+`;
+
+
+
+});
+
+
+}
+
+
+
+document.getElementById(
+"lista"
+).innerHTML=html;
 
 
 
@@ -660,100 +629,8 @@ mostrarEstado(dados);
 
 
 // =====================================
-// MOSTRAR ESTADO
+// INICIAR
 // =====================================
-
-
-function mostrarEstado(dados){
-
-
-
-document.getElementById(
-"estado"
-).innerHTML = `
-
-
-<b>Estado:</b>
-${dados.estado}
-
-<br>
-
-
-<b>Posição:</b>
-${Math.floor(dados.posicao)}s
-
-
-<br>
-
-
-<b>Atual:</b>
-${dados.atual+1}
-
-
-
-`;
-
-
-
-
-
-let fila="";
-
-
-
-
-dados.fila.forEach(
-(item,index)=>{
-
-
-if(index===dados.atual){
-
-fila+="▶ ";
-
-}else{
-
-fila+="○ ";
-
-}
-
-
-
-fila+=
-
-(index+1)
-
-+" - "
-
-+item.url
-
-+"<br><br>";
-
-
-
-}
-
-);
-
-
-
-
-document.getElementById(
-"fila"
-).innerHTML =
-
-fila || "Fila vazia";
-
-
-
-}
-
-
-
-
-
-
-
-// inicialização
 
 
 atualizar();
@@ -764,7 +641,7 @@ setInterval(
 
 atualizar,
 
-2000
+3000
 
 );
 
