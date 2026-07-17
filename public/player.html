@@ -7,11 +7,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-
-<title>X-Stream Player V5</title>
+<title>X-Stream Player</title>
 
 
 <style>
+
 
 html,body{
 
@@ -25,68 +25,40 @@ background:#000;
 
 overflow:hidden;
 
-font-family:Arial,sans-serif;
+font-family:Arial,Helvetica,sans-serif;
+
+color:#fff;
 
 }
+
 
 
 
 #video{
 
-position:fixed;
 
-width:100%;
-height:100%;
+position:fixed;
 
 top:0;
 left:0;
 
+
+width:100%;
+height:100%;
+
+
 background:#000;
+
 
 object-fit:contain;
 
-}
-
-
-
-
-
-#status{
-
-position:fixed;
-
-top:20px;
-left:20px;
-
-background:rgba(0,0,0,.75);
-
-padding:15px 20px;
-
-border-radius:10px;
-
-color:white;
 
 z-index:10;
 
-}
-
-
-
-#statusTitle{
-
-font-size:22px;
-font-weight:bold;
 
 }
 
 
-#statusText{
-
-font-size:17px;
-
-margin-top:5px;
-
-}
 
 
 
@@ -95,24 +67,187 @@ margin-top:5px;
 
 position:fixed;
 
+
+top:0;
+left:0;
+
+
 width:100%;
 height:100%;
 
+
 display:flex;
+
 
 align-items:center;
 
+
 justify-content:center;
+
+
+flex-direction:column;
+
 
 background:#000;
 
-color:white;
+
+font-size:28px;
+
+
+z-index:20;
+
+
+}
+
+
+
+
+
+.loader{
+
+
+width:55px;
+
+height:55px;
+
+
+border-radius:50%;
+
+
+border:6px solid #555;
+
+
+border-top-color:#fff;
+
+
+animation:girar 1s linear infinite;
+
+
+margin-bottom:25px;
+
+
+}
+
+
+
+@keyframes girar{
+
+
+from{
+
+transform:rotate(0deg);
+
+}
+
+
+to{
+
+transform:rotate(360deg);
+
+}
+
+
+}
+
+
+
+
+
+
+#status{
+
+
+position:fixed;
+
+
+top:20px;
+
+left:20px;
+
+
+background:rgba(0,0,0,.75);
+
+
+padding:15px 20px;
+
+
+border-radius:10px;
+
+
+z-index:50;
+
+
+}
+
+
+
+#titulo{
+
+
+font-size:24px;
+
+
+font-weight:bold;
+
+
+}
+
+
+
+#mensagem{
+
+
+font-size:18px;
+
+
+margin-top:5px;
+
+
+}
+
+
+
+
+
+
+
+#error{
+
+
+display:none;
+
+
+position:fixed;
+
+
+top:0;
+left:0;
+
+
+width:100%;
+height:100%;
+
+
+background:#000;
+
+
+align-items:center;
+
+
+justify-content:center;
+
+
+flex-direction:column;
+
 
 font-size:25px;
 
-z-index:5;
+
+z-index:100;
+
 
 }
+
 
 
 
@@ -120,6 +255,7 @@ z-index:5;
 
 
 </head>
+
 
 
 <body>
@@ -143,32 +279,63 @@ preload="auto"
 
 
 
+
 <div id="waiting">
+
+
+<div class="loader"></div>
+
+
+<div>
 
 Aguardando transmissão...
 
 </div>
 
 
+</div>
+
+
+
+
+
 
 
 <div id="status">
 
-<div id="statusTitle">
+
+<div id="titulo">
 
 X-Stream
 
 </div>
 
 
-<div id="statusText">
+<div id="mensagem">
 
 Conectando...
 
 </div>
 
+
 </div>
 
+
+
+
+
+
+<div id="error">
+
+
+<div>
+
+Erro ao reproduzir
+
+</div>
+
+
+</div>
 
 
 
@@ -178,27 +345,29 @@ Conectando...
 
 
 // =====================================
-// CONFIG
+// CONFIGURAÇÃO
 // =====================================
 
 
-const servidor = "";
+const servidor =
+
+"https://x-stream-56ya.onrender.com";
 
 
 
 const video =
+
 document.getElementById("video");
 
 
 
 let urlAtual="";
 
-let videoAtual=-1;
+let indiceAtual=-1;
 
-let sincronizando=false;
+let ultimaPosicao=0;
 
-
-
+let carregando=false;
 
 
 
@@ -211,8 +380,28 @@ function mostrarStatus(texto){
 
 
 document.getElementById(
-"statusText"
+"mensagem"
 ).innerHTML=texto;
+
+
+}
+
+
+
+
+
+
+// =====================================
+// ESCONDER AGUARDANDO
+// =====================================
+
+
+function pronto(){
+
+
+document.getElementById(
+"waiting"
+).style.display="none";
 
 
 }
@@ -227,7 +416,7 @@ document.getElementById(
 // =====================================
 
 
-function atualizar(){
+function buscarEstado(){
 
 
 
@@ -236,24 +425,32 @@ servidor+"/status"
 )
 
 
-.then(r=>r.json())
+.then(function(res){
+
+return res.json();
+
+})
 
 
-.then(dados=>{
+.then(function(dados){
 
 
-processar(dados);
+
+receberEstado(dados);
 
 
 
 })
 
-.catch(()=>{
+
+.catch(function(){
+
 
 
 mostrarStatus(
-"Sem conexão"
+"Servidor offline"
 );
+
 
 
 });
@@ -269,19 +466,27 @@ mostrarStatus(
 
 
 
-
 // =====================================
-// PROCESSAR ESTADO
+// RECEBER ESTADO GLOBAL
 // =====================================
 
 
-function processar(dados){
+function receberEstado(dados){
 
 
 
 if(!dados.ativo){
 
+
+
+mostrarStatus(
+"Aguardando transmissão..."
+);
+
+
+
 return;
+
 
 }
 
@@ -290,30 +495,17 @@ return;
 
 
 let item =
+
 dados.fila[dados.atual];
+
 
 
 
 if(!item){
 
+
 return;
 
-}
-
-
-
-
-
-// mudou vídeo
-
-
-if(
-item.url !== urlAtual
-){
-
-
-carregar(item.url);
-
 
 }
 
@@ -323,51 +515,84 @@ carregar(item.url);
 
 
 
-// sincroniza estado
+// NOVO VÍDEO
 
 
 if(
-dados.estado==="playing"
+urlAtual !== item.url
 ){
+
+
+
+abrirVideo(
+item.url
+);
+
+
+
+}
+
+
+
+
+
+
+
+// SINCRONIZAR PLAY
+
+
+if(
+dados.estado === "playing"
+){
+
 
 
 if(video.paused){
 
+
 video.play()
-.catch(()=>{});
+
+.catch(function(){});
 
 
 }
 
 
+
 }
 
 
 
+
+
+
+// SINCRONIZAR PAUSE
 
 
 if(
-dados.estado==="paused"
+dados.estado === "paused"
 ){
+
 
 
 if(!video.paused){
 
+
 video.pause();
 
-}
-
 
 }
 
 
 
+}
 
 
 
 
 
-// sincroniza tempo somente depois
+
+// SINCRONIZAR TEMPO
 
 
 if(
@@ -375,29 +600,38 @@ video.readyState >= 2
 ){
 
 
+
 let diferenca =
 
 Math.abs(
+
 video.currentTime -
-dados.posicao
+
+Number(dados.posicao || 0)
+
 );
 
 
 
+
 if(
-diferenca > 5
+diferenca > 8
 ){
 
 
+
 video.currentTime =
-dados.posicao;
 
-
-}
+Number(dados.posicao);
 
 
 
 }
+
+
+
+}
+
 
 
 
@@ -411,11 +645,23 @@ dados.posicao;
 
 
 // =====================================
-// CARREGAR VÍDEO
+// ABRIR VÍDEO
 // =====================================
 
 
-function carregar(url){
+function abrirVideo(url){
+
+
+
+if(carregando){
+
+return;
+
+}
+
+
+
+carregando=true;
 
 
 
@@ -431,8 +677,9 @@ mostrarStatus(
 
 video.src=url;
 
-video.load();
 
+
+video.load();
 
 
 
@@ -442,9 +689,11 @@ video.oncanplay=function(){
 
 
 
-document.getElementById(
-"waiting"
-).style.display="none";
+carregando=false;
+
+
+
+pronto();
 
 
 
@@ -455,11 +704,43 @@ mostrarStatus(
 
 
 video.play()
-.catch(()=>{});
+
+.catch(function(){
+
+
+
+mostrarStatus(
+"Aguardando reprodução..."
+);
+
+
+
+});
 
 
 
 };
+
+
+
+
+
+video.onerror=function(){
+
+
+
+carregando=false;
+
+
+
+document.getElementById(
+"error"
+).style.display="flex";
+
+
+
+};
+
 
 
 
@@ -474,11 +755,11 @@ video.play()
 
 
 // =====================================
-// ENVIAR POSIÇÃO
+// ENVIAR POSIÇÃO PARA SERVIDOR
 // =====================================
 
 
-setInterval(()=>{
+setInterval(function(){
 
 
 
@@ -490,29 +771,39 @@ video.currentTime>0
 
 
 fetch(
+
 servidor+"/atualizar-posicao",
+
 {
 
 
 method:"POST",
 
+
 headers:{
 
+
 "Content-Type":
+
 "application/json"
+
 
 },
 
 
 body:JSON.stringify({
 
+
 posicao:
+
 video.currentTime
+
 
 })
 
 
 }
+
 
 );
 
@@ -531,12 +822,13 @@ video.currentTime
 
 
 
+
 // =====================================
-// CONTROLES TV
+// COMANDOS
 // =====================================
 
 
-function comando(acao,valor){
+function enviarComando(acao,valor){
 
 
 
@@ -548,25 +840,34 @@ acao:acao
 
 
 
-if(valor!==undefined){
+if(valor !== undefined){
+
 
 dados.valor=valor;
+
 
 }
 
 
 
+
 fetch(
+
 servidor+"/controle",
+
 {
 
 
 method:"POST",
 
+
 headers:{
 
+
 "Content-Type":
+
 "application/json"
+
 
 },
 
@@ -576,6 +877,7 @@ body:JSON.stringify(dados)
 
 }
 
+
 );
 
 
@@ -588,6 +890,13 @@ body:JSON.stringify(dados)
 
 
 
+
+
+// =====================================
+// CONTROLE TV
+// =====================================
+
+
 document.onkeydown=function(e){
 
 
@@ -595,47 +904,104 @@ document.onkeydown=function(e){
 switch(e.keyCode){
 
 
+
+// ENTER
+
 case 13:
 
-comando(
-video.paused ?
-"play":
+
+if(video.paused){
+
+
+enviarComando(
+"play"
+);
+
+
+}else{
+
+
+enviarComando(
 "pause",
 video.currentTime
 );
 
+
+}
+
+
 break;
 
 
+
+
+
+
+
+// ESPAÇO
 
 case 32:
 
-comando(
-video.paused ?
-"play":
+
+if(video.paused){
+
+
+enviarComando(
+"play"
+);
+
+
+}else{
+
+
+enviarComando(
 "pause",
 video.currentTime
 );
 
+
+}
+
+
 break;
 
 
+
+
+
+
+
+// DIREITA
 
 case 39:
 
-comando(
+
+enviarComando(
+
 "seek",
+
 video.currentTime+10
+
 );
+
 
 break;
 
 
 
+
+
+
+
+// ESQUERDA
+
 case 37:
 
-comando(
+
+enviarComando(
+
 "seek",
+
 Math.max(
 0,
 video.currentTime-10
@@ -643,21 +1009,42 @@ video.currentTime-10
 
 );
 
+
 break;
 
 
+
+
+
+
+
+// PRÓXIMO
 
 case 34:
 
-comando("next");
+
+enviarComando(
+"next"
+);
+
 
 break;
 
 
 
+
+
+
+
+// ANTERIOR
+
 case 33:
 
-comando("previous");
+
+enviarComando(
+"previous"
+);
+
 
 break;
 
@@ -675,8 +1062,47 @@ break;
 
 
 
+
 // =====================================
-// INÍCIO
+// CLIQUE NO VÍDEO
+// =====================================
+
+
+video.onclick=function(){
+
+
+if(video.paused){
+
+
+enviarComando(
+"play"
+);
+
+
+}else{
+
+
+enviarComando(
+"pause",
+video.currentTime
+);
+
+
+}
+
+
+};
+
+
+
+
+
+
+
+
+
+// =====================================
+// INICIALIZAÇÃO
 // =====================================
 
 
@@ -686,22 +1112,19 @@ mostrarStatus(
 
 
 
-atualizar();
+buscarEstado();
 
 
 
 setInterval(
 
-atualizar,
+buscarEstado,
 
 2000
 
 );
 
-
-
 </script>
-
 
 </body>
 
