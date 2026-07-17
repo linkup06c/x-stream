@@ -2132,6 +2132,181 @@ mostrarStatus(
 "Player pronto"
 
 );
+
+
+
+// =====================================
+// X-STREAM TV CURSOR HIDE ENGINE
+// TENTA OCULTAR PONTEIRO DO NAVEGADOR
+// =====================================
+
+
+(function(){
+
+
+    function esconderCursor(){
+
+
+        try{
+
+
+            document.documentElement.style.cursor = "none";
+
+
+            document.body.style.cursor = "none";
+
+
+
+            var elementos =
+            document.querySelectorAll("*");
+
+
+
+            for(
+                var i = 0;
+                i < elementos.length;
+                i++
+            ){
+
+
+                elementos[i].style.cursor="none";
+
+
+            }
+
+
+
+        }catch(e){}
+
+
+
+    }
+
+
+
+
+
+
+    // aplicar ao iniciar
+
+    esconderCursor();
+
+
+
+
+
+
+    // reaplicar periodicamente
+
+    setInterval(function(){
+
+
+        esconderCursor();
+
+
+    },1000);
+
+
+
+
+
+
+    // quando mexer no controle/mouse
+
+    document.addEventListener(
+        "mousemove",
+        esconderCursor,
+        false
+    );
+
+
+
+    document.addEventListener(
+        "mousedown",
+        esconderCursor,
+        false
+    );
+
+
+
+    document.addEventListener(
+        "touchstart",
+        esconderCursor,
+        false
+    );
+
+
+
+    document.addEventListener(
+        "keydown",
+        esconderCursor,
+        false
+    );
+
+
+
+
+
+
+    // tenta entrar em modo fullscreen
+
+    function fullscreen(){
+
+
+        try{
+
+
+            var tela =
+            document.documentElement;
+
+
+
+            if(
+                tela.requestFullscreen
+            ){
+
+
+                tela.requestFullscreen();
+
+
+            }
+
+
+            else if(
+                tela.webkitRequestFullscreen
+            ){
+
+
+                tela.webkitRequestFullscreen();
+
+
+            }
+
+
+
+        }catch(e){}
+
+
+
+    }
+
+
+
+
+
+    // primeira interação da TV
+
+    document.addEventListener(
+        "click",
+        fullscreen,
+        {
+            once:true
+        }
+    );
+
+
+
+})();
 </script>
 
 
