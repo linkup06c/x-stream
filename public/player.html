@@ -1134,16 +1134,15 @@ function sincronizarEstado(){
 
 
 
-                if(diferenca > 3){
+                if(
+    diferenca > 5 &&
+    mediaVideo.paused
+){
 
+    mediaVideo.currentTime =
+    estadoServidor.posicao;
 
-
-                    mediaVideo.currentTime =
-                    estadoServidor.posicao;
-
-
-
-                }
+}
 
 
 
