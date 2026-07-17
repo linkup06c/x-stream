@@ -111,72 +111,6 @@ z-index:15;
 
 
 
-
-/* =====================================
-   STATUS
-===================================== */
-
-
-#status{
-
-
-position:fixed;
-
-
-top:20px;
-
-left:20px;
-
-
-background:rgba(0,0,0,.75);
-
-
-padding:15px 20px;
-
-
-border-radius:10px;
-
-
-z-index:9999;
-
-
-transition:.3s;
-
-
-}
-
-
-
-#statusTitle{
-
-
-font-size:24px;
-
-font-weight:bold;
-
-
-margin-bottom:8px;
-
-
-}
-
-
-
-#statusMessage{
-
-
-font-size:18px;
-
-
-}
-
-
-
-
-
-
-
-
 /* =====================================
    TELA AGUARDANDO
 ===================================== */
@@ -465,13 +399,96 @@ outline:none;
 }
 
 
+#cursorLayer{
 
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+
+z-index:99999;
+
+
+/* invisível */
+
+color:transparent;
+
+background:transparent;
+
+
+/* mantém texto */
+
+user-select:text;
+
+-webkit-user-select:text;
+
+cursor:text;
+
+
+/* teste primeiro SEM bloquear */
+
+}
+
+
+
+
+
+
+
+
+
+
+#cursorLayer{
+
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+
+z-index:99999;
+
+
+/* invisível */
+
+color:transparent;
+
+background:transparent;
+
+
+/* mantém texto */
+
+user-select:text;
+
+-webkit-user-select:text;
+
+cursor:text;
+
+
+/* teste primeiro SEM bloquear */
+
+}
 </style>
 
 </head>
-
-
 <body>
+<div id="cursorLayer">
+
+Texto de teste invisível
+
+</div>
+
+<!-- =====================================
+     VÍDEO PRINCIPAL
+===================================== -->
+
 
 <video
 
@@ -486,6 +503,7 @@ webkit-playsinline
 preload="auto"
 
 ></video>
+
 
 
 
@@ -544,40 +562,6 @@ id="mediaImage"
 
 
 </div>
-
-
-
-
-
-
-
-
-<!-- =====================================
-     STATUS
-===================================== -->
-
-
-<div id="status">
-
-
-<div id="statusTitle">
-
-X-Stream
-
-</div>
-
-
-<div id="statusMessage">
-
-Conectando...
-
-</div>
-
-
-</div>
-
-
-
 
 
 
@@ -669,59 +653,6 @@ var dadosServidor = {};
 
 
 
-
-
-
-// =====================================
-// STATUS
-// =====================================
-
-
-function mostrarStatus(titulo,texto){
-
-
-var box =
-document.getElementById("status");
-
-
-if(box){
-
-box.style.display="block";
-
-}
-
-
-document.getElementById(
-"statusTitle"
-).innerHTML=titulo;
-
-
-document.getElementById(
-"statusMessage"
-).innerHTML=texto;
-
-
-}
-
-
-
-
-
-function esconderStatus(){
-
-
-var box =
-document.getElementById("status");
-
-
-if(box){
-
-box.style.display="none";
-
-}
-
-
-}
 
 
 
