@@ -2,63 +2,212 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
+
 const app = express();
 
+
 app.use(cors());
+
 app.use(express.json());
 
-/* SERVE A PASTA public */
-app.use(express.static(path.join(__dirname, "public")));
+
+app.use(
+    express.static(
+        path.join(__dirname,"public")
+    )
+);
+
+
+
+// =====================================
+// ESTADO GLOBAL X-STREAM
+// COMPATÍVEL COM PLAYER ANTIGO
+// =====================================
+
 
 let transmissao = {
-    ativo: false,
-    video: "",
-    iniciado: 0
+
+
+    ativo:false,
+
+
+    // COMPATIBILIDADE PLAYER ANTIGO
+
+    video:"",
+
+
+
+    // FILA NOVA
+
+    fila:[],
+
+
+    atual:0,
+
+
+
+    // ESTADO GLOBAL
+
+    estado:"paused",
+
+
+    posicao:0,
+
+
+    volume:1,
+
+
+    comando:"",
+
+
+    atualizado:Date.now()
+
+
 };
 
-app.get("/", (req, res) => {
-    res.send("Servidor X-Stream online");
+
+
+
+
+
+// =====================================
+// HOME
+// =====================================
+
+
+app.get("/",(req,res)=>{
+
+
+    res.send(
+        "Servidor X-Stream V3 online"
+    );
+
+
 });
 
-/* PLAYER DA TV */
-app.get("/player", function(req, res){
-    res.sendFile(path.join(__dirname, "public", "player.html"));
+
+
+
+
+
+// =====================================
+// PLAYER
+// =====================================
+
+
+app.get("/player",(req,res)=>{
+
+
+    res.sendFile(
+
+        path.join(
+            __dirname,
+            "public",
+            "player.html"
+        )
+
+    );
+
+
 });
 
-app.post("/enviar", (req, res) => {
 
-    const url = req.body.url;
 
-    if (!url) {
+
+
+
+
+// =====================================
+// ENVIAR NOVO VÍDEO
+// =====================================
+
+
+app.post("/enviar",(req,res)=>{
+
+
+    const url=req.body.url;
+
+
+
+    if(!url){
+
+
         return res.json({
-            erro: "URL não enviada"
+
+            erro:
+            "URL não enviada"
+
         });
+
+
     }
 
-    transmissao = {
-        ativo: true,
-        video: url,
-        iniciado: Date.now()
-    };
 
-    console.log("Nova transmissão:", url);
 
-    res.json({
-        sucesso: true,
-        transmissao
+
+    transmissao.fila.push({
+
+        url:url
+
     });
 
-});
 
-app.get("/status", (req, res) => {
-    res.json(transmissao);
-});
 
-const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+    transmissao.ativo=true;
 
-    console.log("Servidor rodando na porta:", PORT);
+
+
+
+    // PRIMEIRO VÍDEO
+
+    if(
+        transmissao.fila.length===1
+    ){
+
+
+        transmissao.atual=0;
+
+
+        transmissao.video=url;
+
+
+        transmissao.estado="playing";
+
+
+    }
+
+
+
+
+
+    transmissao.comando="novo";
+
+
+    transmissao.atualizado=
+    Date.now();
+
+
+
+
+    console.log(
+        "Nova mídia:",
+        url
+    );
+
+
+
+
+    res.json({
+
+        sucesso:true,
+
+
+        transmissao
+
+    });
+
+
 
 });
 
@@ -404,6 +553,7 @@ function videoAnterior(){
 
 
 }
+
 
 
 // =====================================
