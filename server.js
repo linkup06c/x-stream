@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
-
 const app = express();
 
 
@@ -20,42 +19,29 @@ app.use(
 
 
 // =====================================
-// ESTADO GLOBAL X-STREAM V4
+// ESTADO GLOBAL X-STREAM V5
 // =====================================
 
 
-let transmissao = {
-
+let estado = {
 
     ativo:false,
 
-
     fila:[],
-
 
     atual:0,
 
-
     estado:"paused",
-
 
     posicao:0,
 
-
     volume:1,
-
 
     comando:"",
 
-
     atualizado:Date.now()
 
-
 };
-
-
-
-
 
 
 
@@ -68,13 +54,11 @@ app.get("/",(req,res)=>{
 
 
     res.send(
-        "Servidor X-Stream V4 online"
+        "X-Stream V5 Online"
     );
 
 
 });
-
-
 
 
 
@@ -106,9 +90,8 @@ app.get("/player",(req,res)=>{
 
 
 
-
 // =====================================
-// RECEBER NOVA URL
+// ADICIONAR URL
 // =====================================
 
 
@@ -127,7 +110,7 @@ app.post("/enviar",(req,res)=>{
 
             sucesso:false,
 
-            erro:"URL vazia"
+            erro:"URL não enviada"
 
         });
 
@@ -137,9 +120,7 @@ app.post("/enviar",(req,res)=>{
 
 
 
-
-
-    transmissao.fila.push({
+    estado.fila.push({
 
         url:url
 
@@ -148,23 +129,18 @@ app.post("/enviar",(req,res)=>{
 
 
 
-
-
-
-    transmissao.ativo=true;
-
+    estado.ativo=true;
 
 
 
     if(
-    transmissao.fila.length === 1
+        estado.fila.length === 1
     ){
 
 
-        transmissao.atual=0;
+        estado.atual=0;
 
-
-        transmissao.posicao=0;
+        estado.posicao=0;
 
 
     }
@@ -172,16 +148,14 @@ app.post("/enviar",(req,res)=>{
 
 
 
-
-    transmissao.estado="playing";
-
-
-    transmissao.comando="novo";
+    estado.estado="playing";
 
 
-    transmissao.atualizado =
+    estado.comando="novo";
+
+
+    estado.atualizado =
     Date.now();
-
 
 
 
@@ -196,13 +170,11 @@ app.post("/enviar",(req,res)=>{
 
 
 
-
-
     res.json({
 
         sucesso:true,
 
-        transmissao
+        estado
 
     });
 
@@ -216,9 +188,8 @@ app.post("/enviar",(req,res)=>{
 
 
 
-
 // =====================================
-// STATUS GLOBAL
+// STATUS PARA PLAYERS
 // =====================================
 
 
@@ -227,7 +198,7 @@ app.get("/status",(req,res)=>{
 
     res.json(
 
-        transmissao
+        estado
 
     );
 
@@ -240,9 +211,8 @@ app.get("/status",(req,res)=>{
 
 
 
-
 // =====================================
-// RECEBER POSIÇÃO REAL DO PLAYER
+// ATUALIZAR TEMPO REAL DO PLAYER
 // =====================================
 
 
@@ -255,15 +225,15 @@ app.post("/atualizar-posicao",(req,res)=>{
 
 
     if(
-    !isNaN(posicao)
+        !isNaN(posicao)
     ){
 
 
-        transmissao.posicao =
+        estado.posicao =
         posicao;
 
 
-        transmissao.atualizado =
+        estado.atualizado =
         Date.now();
 
 
@@ -272,13 +242,9 @@ app.post("/atualizar-posicao",(req,res)=>{
 
 
 
-
     res.json({
 
-        sucesso:true,
-
-        posicao:
-        transmissao.posicao
+        sucesso:true
 
     });
 
@@ -306,7 +272,6 @@ app.post("/controle",(req,res)=>{
 
 
 
-
     switch(acao){
 
 
@@ -314,7 +279,7 @@ app.post("/controle",(req,res)=>{
         case "play":
 
 
-            transmissao.estado =
+            estado.estado =
             "playing";
 
 
@@ -324,11 +289,10 @@ app.post("/controle",(req,res)=>{
 
 
 
-
         case "pause":
 
 
-            transmissao.estado =
+            estado.estado =
             "paused";
 
 
@@ -338,7 +302,7 @@ app.post("/controle",(req,res)=>{
             ){
 
 
-                transmissao.posicao =
+                estado.posicao =
                 Number(req.body.valor);
 
 
@@ -352,19 +316,16 @@ app.post("/controle",(req,res)=>{
 
 
 
-
-
         case "seek":
 
 
 
-            transmissao.posicao =
+            estado.posicao =
             Number(req.body.valor);
 
 
 
         break;
-
 
 
 
@@ -384,7 +345,6 @@ app.post("/controle",(req,res)=>{
 
 
 
-
         case "previous":
 
 
@@ -397,14 +357,11 @@ app.post("/controle",(req,res)=>{
 
 
 
-
         case "volume":
 
 
-
-            transmissao.volume =
+            estado.volume =
             Number(req.body.valor);
-
 
 
         break;
@@ -416,13 +373,12 @@ app.post("/controle",(req,res)=>{
 
 
 
-
-    transmissao.comando =
+    estado.comando =
     acao;
 
 
 
-    transmissao.atualizado =
+    estado.atualizado =
     Date.now();
 
 
@@ -434,7 +390,7 @@ app.post("/controle",(req,res)=>{
 
         sucesso:true,
 
-        transmissao
+        estado
 
     });
 
@@ -449,9 +405,8 @@ app.post("/controle",(req,res)=>{
 
 
 
-
 // =====================================
-// PRÓXIMO VÍDEO
+// PRÓXIMO
 // =====================================
 
 
@@ -460,19 +415,19 @@ function proximo(){
 
 
     if(
-    transmissao.atual <
-    transmissao.fila.length-1
+    estado.atual <
+    estado.fila.length-1
     ){
 
 
-        transmissao.atual++;
+        estado.atual++;
 
 
     }
 
 
 
-    transmissao.posicao=0;
+    estado.posicao=0;
 
 
 
@@ -495,18 +450,18 @@ function anterior(){
 
 
     if(
-    transmissao.atual > 0
+    estado.atual>0
     ){
 
 
-        transmissao.atual--;
+        estado.atual--;
 
 
     }
 
 
 
-    transmissao.posicao=0;
+    estado.posicao=0;
 
 
 
@@ -519,37 +474,34 @@ function anterior(){
 
 
 
-
 // =====================================
-// LIMPAR FILA
+// LIMPAR
 // =====================================
 
 
 app.post("/limpar",(req,res)=>{
 
 
-    transmissao.fila=[];
+    estado.fila=[];
 
 
-    transmissao.atual=0;
+    estado.atual=0;
 
 
-    transmissao.ativo=false;
+    estado.ativo=false;
 
 
-    transmissao.estado="paused";
+    estado.estado="paused";
 
 
-    transmissao.posicao=0;
+    estado.posicao=0;
 
 
-    transmissao.comando="limpar";
+    estado.comando="limpar";
 
 
-
-    transmissao.atualizado =
+    estado.atualizado =
     Date.now();
-
 
 
 
@@ -570,6 +522,7 @@ app.post("/limpar",(req,res)=>{
 
 
 
+
 // =====================================
 // FILA
 // =====================================
@@ -581,11 +534,12 @@ app.get("/fila",(req,res)=>{
     res.json({
 
         fila:
-        transmissao.fila,
+        estado.fila,
 
 
         atual:
-        transmissao.atual
+        estado.atual
+
 
     });
 
@@ -599,6 +553,10 @@ app.get("/fila",(req,res)=>{
 
 
 
+// =====================================
+// SERVIDOR
+// =====================================
+
 
 const PORT =
 process.env.PORT || 3000;
@@ -610,7 +568,7 @@ app.listen(PORT,()=>{
 
 console.log(
 
-"X-Stream V4 rodando na porta",
+"X-Stream V5 rodando na porta",
 
 PORT
 
