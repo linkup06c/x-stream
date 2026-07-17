@@ -584,23 +584,22 @@ outline:none;
 
 }
 
+
 /* =====================================
-   CAMPO FANTASMA SRAF TV BROWSER
-   TENTA FORÇAR CURSOR PEQUENO
+   CAMADA PARA TESTE DO CURSOR SRAF
 ===================================== */
 
-
-#tvCursorZone{
+#tvCursorLayer{
 
 position:fixed;
 
-top:10px;
+top:0;
+left:0;
 
-right:10px;
+width:100%;
+height:100%;
 
-width:120px;
-
-height:35px;
+opacity:0.01;
 
 background:transparent;
 
@@ -608,20 +607,16 @@ border:none;
 
 outline:none;
 
-opacity:0.01;
+resize:none;
 
-z-index:99999;
+overflow:hidden;
 
 color:transparent;
+caret-color:transparent;
 
-}
+z-index:9998;
 
-
-/* evita seleção */
-
-#tvCursorZone::selection{
-
-background:transparent;
+font-size:1px;
 
 }
 
@@ -633,8 +628,7 @@ background:transparent;
 
 <body>
 <!-- CAMPO FANTASMA PARA CURSOR DA TV -->
-<input id="tvCursorZone" type="text" autocomplete="off">
-
+<textarea id="tvCursorLayer" readonly tabindex="-1"></textarea>
 
 <!-- =====================================
      VÍDEO PRINCIPAL
@@ -2351,112 +2345,49 @@ mostrarStatus(
 
 
 
-// =====================================
-// SRAF TV CURSOR ZONE
-// CAMPO FANTASMA SEM TECLADO
-// =====================================
 
+// =====================================
+// CAMADA CURSOR SRAF
+// =====================================
 
 (function(){
 
+var layer =
+document.getElementById("tvCursorLayer");
 
-var campo =
-document.getElementById(
-"tvCursorZone"
-);
+if(!layer) return;
 
+// impede seleção
+layer.value="";
 
+// impede menu
+layer.oncontextmenu=function(e){
 
-if(!campo){
+    e.preventDefault();
 
-return;
+    return false;
 
-}
+};
 
+// remove foco imediatamente
+layer.onfocus=function(){
 
+    setTimeout(function(){
 
-// bloqueia teclado
+        layer.blur();
 
-campo.addEventListener(
-"keydown",
-function(e){
+    },1);
 
-e.preventDefault();
+};
 
-},
-false
-);
+// impede qualquer tecla
+layer.onkeydown=function(e){
 
+    e.preventDefault();
 
+    return false;
 
-
-// bloqueia clique
-
-campo.addEventListener(
-"click",
-function(e){
-
-e.preventDefault();
-
-e.stopPropagation();
-
-campo.blur();
-
-
-},
-false
-);
-
-
-
-
-// se receber foco,
-// tira imediatamente
-
-campo.addEventListener(
-"focus",
-function(){
-
-setTimeout(function(){
-
-campo.blur();
-
-},50);
-
-
-},
-false
-);
-
-
-
-
-// tenta manter o estado
-
-setInterval(function(){
-
-
-try{
-
-
-campo.focus();
-
-
-setTimeout(function(){
-
-campo.blur();
-
-},50);
-
-
-
-}catch(e){}
-
-
-
-},3000);
-
-
+};
 
 })();
 
