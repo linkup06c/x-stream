@@ -5,9 +5,11 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-<title>X-Stream Sync Player V3</title>
+
+<title>X-Stream Sync Player V4</title>
 
 
 <style>
@@ -16,10 +18,13 @@
 html,
 body{
 
+
 margin:0;
+
 padding:0;
 
 width:100%;
+
 height:100%;
 
 background:#000;
@@ -30,7 +35,11 @@ font-family:Arial,Helvetica,sans-serif;
 
 color:white;
 
+
 }
+
+
+
 
 
 /* =====================================
@@ -40,21 +49,31 @@ color:white;
 
 #mediaVideo{
 
+
 position:fixed;
 
 top:0;
+
 left:0;
 
+
 width:100%;
+
 height:100%;
+
 
 background:#000;
 
+
 object-fit:contain;
+
 
 z-index:10;
 
+
 }
+
+
 
 
 
@@ -65,21 +84,29 @@ z-index:10;
 
 #status{
 
+
 position:fixed;
+
 
 top:20px;
 
 left:20px;
 
+
 background:rgba(0,0,0,.75);
+
 
 padding:15px 20px;
 
+
 border-radius:10px;
+
 
 z-index:9999;
 
-transition:.5s;
+
+transition:.4s;
+
 
 }
 
@@ -87,9 +114,12 @@ transition:.5s;
 
 #statusTitle{
 
+
 font-size:24px;
 
+
 font-weight:bold;
+
 
 }
 
@@ -97,27 +127,36 @@ font-weight:bold;
 
 #statusMessage{
 
+
 font-size:18px;
 
+
 margin-top:5px;
+
 
 }
 
 
 
 
+
+
+
 /* =====================================
-   TELA ESPERA
+   AGUARDANDO
 ===================================== */
 
 
 #waiting{
 
+
 position:fixed;
+
 
 top:0;
 
 left:0;
+
 
 width:100%;
 
@@ -129,19 +168,24 @@ background:#000;
 
 display:flex;
 
+
 align-items:center;
+
 
 justify-content:center;
 
+
 flex-direction:column;
+
+
+z-index:5000;
 
 
 font-size:28px;
 
 
-z-index:5000;
-
 }
+
 
 
 
@@ -149,6 +193,7 @@ z-index:5000;
 
 
 width:55px;
+
 
 height:55px;
 
@@ -169,6 +214,7 @@ margin-bottom:25px;
 
 
 }
+
 
 
 
@@ -195,6 +241,7 @@ transform:rotate(360deg);
 
 
 
+
 /* =====================================
    ERRO
 ===================================== */
@@ -204,6 +251,7 @@ transform:rotate(360deg);
 
 
 position:fixed;
+
 
 top:0;
 
@@ -223,6 +271,7 @@ display:none;
 
 align-items:center;
 
+
 justify-content:center;
 
 
@@ -236,6 +285,7 @@ z-index:20000;
 
 
 }
+
 
 
 
@@ -262,23 +312,28 @@ max-width:80%;
 
 
 
+
+
 /* =====================================
-   CONTROLE TV
+   TV REMOTE
 ===================================== */
 
 
-video,
-button{
+*{
 
-outline:none;
+
+-webkit-tap-highlight-color:transparent;
+
 
 }
 
 
 
-*{
+video{
 
--webkit-tap-highlight-color:transparent;
+
+outline:none;
+
 
 }
 
@@ -290,19 +345,17 @@ outline:none;
 </head>
 
 
-
 <body>
 
 
-<!-- PLAYER PRINCIPAL -->
+
+
+
+<!-- PLAYER -->
 
 <video
 
 id="mediaVideo"
-
-autoplay
-
-controls
 
 playsinline
 
@@ -318,7 +371,11 @@ preload="auto"
 
 
 
+
+
+
 <!-- STATUS -->
+
 
 <div id="status">
 
@@ -343,7 +400,11 @@ Conectando...
 
 
 
-<!-- ESPERA -->
+
+
+
+<!-- AGUARDANDO -->
+
 
 <div id="waiting">
 
@@ -364,7 +425,10 @@ Aguardando transmissão...
 
 
 
+
+
 <!-- ERRO -->
+
 
 <div id="errorBox">
 
@@ -389,41 +453,35 @@ Não foi possível reproduzir.
 
 
 
+
 <script>
+
+
 // =====================================
-// X-STREAM SYNC PLAYER V3
-// ENGINE PRINCIPAL
+// X-STREAM PLAYER V4 ENGINE
 // =====================================
 
 
+// URL DO SERVIDOR RENDER
 
-var servidor = 
+const servidor =
 "https://x-stream-56ya.onrender.com";
 
 
 
-var mediaVideo =
+const mediaVideo =
 document.getElementById("mediaVideo");
 
 
-var waiting =
-document.getElementById("waiting");
 
+let ultimoVideo = -1;
 
-var statusBox =
-document.getElementById("status");
+let urlAtual = "";
 
+let carregando = false;
 
-var statusMessage =
-document.getElementById("statusMessage");
+let ultimoSeekServidor = 0;
 
-
-
-var ultimoVideo = "";
-
-var estadoAtual = "";
-
-var ultimaPosicao = 0;
 
 
 
@@ -433,29 +491,17 @@ var ultimaPosicao = 0;
 // =====================================
 
 
-function mostrarStatus(titulo,msg){
+function status(titulo,msg){
 
 
 document.getElementById(
 "statusTitle"
-).innerHTML = titulo;
+).innerHTML=titulo;
 
 
-statusMessage.innerHTML = msg;
-
-
-statusBox.style.display="block";
-
-
-}
-
-
-
-
-function esconderStatus(){
-
-
-statusBox.style.display="none";
+document.getElementById(
+"statusMessage"
+).innerHTML=msg;
 
 
 }
@@ -464,12 +510,26 @@ statusBox.style.display="none";
 
 
 
+
+function esconderAguardando(){
+
+
+document.getElementById(
+"waiting"
+).style.display="none";
+
+
+}
+
+
+
+
 // =====================================
-// BUSCAR SERVIDOR
+// BUSCAR ESTADO
 // =====================================
 
 
-function sincronizarServidor(){
+function sincronizar(){
 
 
 
@@ -478,34 +538,27 @@ servidor+"/status"
 )
 
 
-.then(function(res){
-
-return res.json();
-
-})
+.then(r=>r.json())
 
 
-.then(function(dados){
+.then(dados=>{
 
 
 
-processarEstado(
-dados
-);
+processarEstado(dados);
 
 
 
 })
 
 
-.catch(function(){
+.catch(()=>{
 
 
-mostrarStatus(
+status(
 "X-Stream",
-"Servidor offline..."
+"Sem conexão"
 );
-
 
 
 });
@@ -520,8 +573,9 @@ mostrarStatus(
 
 
 
+
 // =====================================
-// PROCESSAR ESTADO GLOBAL
+// PROCESSAR SERVIDOR
 // =====================================
 
 
@@ -532,7 +586,7 @@ function processarEstado(dados){
 if(!dados.ativo){
 
 
-mostrarStatus(
+status(
 "X-Stream",
 "Aguardando transmissão..."
 );
@@ -547,36 +601,33 @@ return;
 
 
 
-// PEGAR VÍDEO ATUAL
+// NOVO VÍDEO
 
 
 if(
 dados.fila &&
-dados.fila.length > 0
+dados.fila.length
 ){
 
 
 
-var item =
-dados.fila[dados.atual || 0];
+let item =
+dados.fila[dados.atual];
 
+
+
+if(item){
 
 
 if(
-item &&
-item.url
+ultimoVideo !== dados.atual ||
+urlAtual !== item.url
 ){
 
-
-
-if(
-ultimoVideo !== item.url
-){
 
 
 ultimoVideo =
-item.url;
-
+dados.atual;
 
 
 carregarVideo(
@@ -600,8 +651,9 @@ item.url
 
 
 
-// SINCRONIZAR ESTADO
 
+
+// ESTADO PLAY / PAUSE
 
 
 if(
@@ -612,7 +664,10 @@ dados.estado === "playing"
 sincronizarPlay();
 
 
+
 }
+
+
 
 
 
@@ -624,12 +679,15 @@ dados.estado === "paused"
 sincronizarPause();
 
 
+
 }
 
 
 
 
-// TEMPO
+
+
+// TEMPO GLOBAL
 
 
 if(
@@ -637,16 +695,19 @@ typeof dados.posicao === "number"
 ){
 
 
+
 sincronizarTempo(
 dados.posicao
 );
 
 
-}
-
-
 
 }
+
+
+
+}
+
 
 
 
@@ -663,23 +724,78 @@ function carregarVideo(url){
 
 
 
-mostrarStatus(
+if(carregando){
+
+return;
+
+}
+
+
+
+carregando=true;
+
+
+urlAtual=url;
+
+
+
+status(
 "X-Stream",
 "Carregando vídeo..."
 );
 
 
 
-mediaVideo.src =
-url;
+
+mediaVideo.src=url;
 
 
 mediaVideo.load();
 
 
 
-mediaVideo.play()
-.catch(function(){});
+
+
+mediaVideo.onloadeddata=function(){
+
+
+
+carregando=false;
+
+
+
+esconderAguardando();
+
+
+
+status(
+"X-Stream",
+"Pronto"
+);
+
+
+
+};
+
+
+
+mediaVideo.onerror=function(){
+
+
+
+carregando=false;
+
+
+
+status(
+"X-Stream",
+"Erro no vídeo"
+);
+
+
+
+};
+
 
 
 
@@ -689,8 +805,11 @@ mediaVideo.play()
 
 
 
+
+
+
 // =====================================
-// PLAY
+// PLAY GLOBAL
 // =====================================
 
 
@@ -699,21 +818,23 @@ function sincronizarPlay(){
 
 
 if(
+mediaVideo.readyState>0 &&
 mediaVideo.paused
 ){
 
 
-
 mediaVideo.play()
-.catch(function(){});
+
+.catch(()=>{});
+
+
+}
 
 
 
 }
 
 
-
-}
 
 
 
@@ -722,7 +843,7 @@ mediaVideo.play()
 
 
 // =====================================
-// PAUSE
+// PAUSE GLOBAL
 // =====================================
 
 
@@ -749,8 +870,11 @@ mediaVideo.pause();
 
 
 
+
+
+
 // =====================================
-// SINCRONIZAR TEMPO
+// SINCRONIZA TEMPO
 // =====================================
 
 
@@ -768,22 +892,40 @@ return;
 
 
 
-var diferenca =
+
+let diferenca =
 Math.abs(
 mediaVideo.currentTime - valor
 );
 
 
 
+
+// só corrige se realmente estiver atrasado
+
 if(
-diferenca > 3
+diferenca > 5
 ){
+
+
+if(
+Date.now()-ultimoSeekServidor > 3000
+){
+
+
+ultimoSeekServidor =
+Date.now();
+
 
 
 mediaVideo.currentTime =
 valor;
 
 
+
+}
+
+
 }
 
 
@@ -796,124 +938,26 @@ valor;
 
 
 
-// =====================================
-// EVENTOS DO VÍDEO
-// =====================================
-
-
-
-mediaVideo.onplaying=function(){
-
-
-
-waiting.style.display="none";
-
-
-esconderStatus();
-
-
-
-};
-
-
-
-mediaVideo.onwaiting=function(){
-
-
-
-mostrarStatus(
-"X-Stream",
-"Carregando..."
-);
-
-
-
-};
-
-
-
-mediaVideo.onerror=function(){
-
-
-
-mostrarStatus(
-"X-Stream",
-"Erro ao carregar vídeo"
-);
-
-
-
-};
-
-
-
-
-
 
 
 // =====================================
-// INICIAR
+// ENVIAR POSIÇÃO REAL
 // =====================================
 
 
-mostrarStatus(
-"X-Stream",
-"Conectando..."
-);
+setInterval(function(){
 
 
 
-sincronizarServidor();
-
-
-
-setInterval(
-
-sincronizarServidor,
-
-2000
-
-);
-
-// =====================================
-// X-STREAM REMOTE CONTROL V3
-// CONTROLES GLOBAIS
-// =====================================
-
-
-
-
-// =====================================
-// ENVIAR COMANDO SERVIDOR
-// =====================================
-
-
-function enviarComando(acao,valor){
-
-
-
-var dados = {
-
-acao:acao
-
-};
-
-
-
-if(valor !== undefined){
-
-
-dados.valor = valor;
-
-
-}
+if(
+!mediaVideo.paused &&
+mediaVideo.currentTime
+){
 
 
 
 fetch(
-
-servidor+"/controle",
-
+servidor+"/atualizar-posicao",
 {
 
 
@@ -931,64 +975,125 @@ headers:{
 },
 
 
-body:
-
-JSON.stringify(dados)
+body:JSON.stringify({
 
 
+posicao:
 
-}
-
-
-)
-
-.catch(function(){
+mediaVideo.currentTime
 
 
-
-});
-
+})
 
 
 }
 
-
-
-
-
-
-
-
-// =====================================
-// PLAY / PAUSE
-// =====================================
-
-
-function alternarPlay(){
-
-
-
-if(
-mediaVideo.paused
-){
-
-
-enviarComando(
-"play"
 );
 
+
+
+}
+
+
+
+},3000);
+
+
+
+
+
+
+
+
+
+// =====================================
+// CONTROLES
+// =====================================
+
+
+function comando(acao,valor){
+
+
+
+let dados={
+
+acao:acao
+
+};
+
+
+
+if(valor!==undefined){
+
+
+dados.valor=valor;
+
+
+}
+
+
+
+
+
+fetch(
+servidor+"/controle",
+{
+
+
+method:"POST",
+
+
+headers:{
+
+
+"Content-Type":
+
+"application/json"
+
+
+},
+
+
+body:JSON.stringify(dados)
+
+
+}
+
+);
+
+
+
+}
+
+
+
+
+
+
+
+
+
+// PLAY / PAUSE
+
+function playPause(){
+
+
+
+if(mediaVideo.paused){
+
+
+comando("play");
 
 
 }else{
 
 
-enviarComando(
+comando(
 "pause",
 mediaVideo.currentTime
 );
 
 
-
 }
 
 
@@ -1002,29 +1107,15 @@ mediaVideo.currentTime
 
 
 
-// =====================================
 // AVANÇAR
-// =====================================
-
 
 function avancar(){
 
 
-
-var tempo =
-
-mediaVideo.currentTime + 10;
-
-
-
-enviarComando(
-
+comando(
 "seek",
-
-tempo
-
+mediaVideo.currentTime+10
 );
-
 
 
 }
@@ -1034,38 +1125,26 @@ tempo
 
 
 
-
-// =====================================
 // VOLTAR
-// =====================================
-
 
 function voltar(){
 
 
 
-var tempo =
-
-mediaVideo.currentTime - 10;
-
+let t =
+mediaVideo.currentTime-10;
 
 
-if(
-tempo < 0
-){
+if(t<0){
 
-tempo = 0;
+t=0;
 
 }
 
 
-
-enviarComando(
-
+comando(
 "seek",
-
-tempo
-
+t
 );
 
 
@@ -1079,21 +1158,14 @@ tempo
 
 
 
-// =====================================
 // PRÓXIMO
-// =====================================
-
 
 function proximo(){
 
 
-
-enviarComando(
-
+comando(
 "next"
-
 );
-
 
 
 }
@@ -1102,26 +1174,18 @@ enviarComando(
 
 
 
-
-
-// =====================================
 // ANTERIOR
-// =====================================
-
 
 function anterior(){
 
 
-
-enviarComando(
-
+comando(
 "previous"
-
 );
 
 
-
 }
+
 
 
 
@@ -1139,92 +1203,53 @@ document.onkeydown=function(e){
 
 
 
-var tecla =
-e.keyCode;
+switch(e.keyCode){
 
 
-
-switch(tecla){
-
-
-
-// ENTER / OK
 
 case 13:
 
-
-alternarPlay();
-
+playPause();
 
 break;
 
 
-
-
-
-// ESPAÇO
 
 case 32:
 
-
-alternarPlay();
-
+playPause();
 
 break;
 
 
-
-
-
-// DIREITA
 
 case 39:
 
-
 avancar();
-
 
 break;
 
 
-
-
-
-// ESQUERDA
 
 case 37:
 
-
 voltar();
-
 
 break;
 
 
-
-
-
-// PAGE DOWN
 
 case 34:
 
-
 proximo();
-
 
 break;
 
 
 
-
-
-// PAGE UP
-
 case 33:
 
-
 anterior();
-
 
 break;
 
@@ -1243,19 +1268,19 @@ break;
 
 
 
+
 // =====================================
-// CLIQUE NO VÍDEO
+// CLIQUE
 // =====================================
 
 
 mediaVideo.onclick=function(){
 
 
-alternarPlay();
+playPause();
 
 
 };
-
 
 
 
@@ -1264,53 +1289,29 @@ alternarPlay();
 
 
 // =====================================
-// RECUPERAÇÃO AUTOMÁTICA
+// INICIAR
 // =====================================
 
 
-window.ononline=function(){
-
-
-mostrarStatus(
-
+status(
 "X-Stream",
-
-"Internet restaurada"
-
-);
-
-
-sincronizarServidor();
-
-
-};
-
-
-
-
-window.onoffline=function(){
-
-
-
-mostrarStatus(
-
-"X-Stream",
-
-"Sem conexão"
-
+"Conectando..."
 );
 
 
 
-};
+sincronizar();
 
 
 
+setInterval(
+
+sincronizar,
+
+2000
+
+);
 
 </script>
-
-
 </body>
-
-
 </html>
