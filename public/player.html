@@ -465,101 +465,13 @@ outline:none;
 }
 
 
-#cursorLayer{
 
-position:fixed;
-
-top:0;
-left:0;
-
-width:100%;
-height:100%;
-
-
-z-index:99999;
-
-
-/* invisível */
-
-color:transparent;
-
-background:transparent;
-
-
-/* mantém texto */
-
-user-select:text;
-
--webkit-user-select:text;
-
-cursor:text;
-
-
-/* teste primeiro SEM bloquear */
-
-}
-
-
-
-#testeCursor{
-
-position:fixed;
-
-top:50%;
-left:50%;
-
-transform:translate(-50%,-50%);
-
-z-index:99999;
-
-font-size:50px;
-
-font-family:Arial,sans-serif;
-
-font-weight:bold;
-
-color:white;
-
-background:red;
-
-padding:30px;
-
-border-radius:15px;
-
-user-select:text;
-
--webkit-user-select:text;
-
-cursor:text;
-
-}
 </style>
 
 </head>
 
 
 <body>
-
- <div id="cursorLayer">
-
-<span>
-X-Stream Player
-X-Stream Player
-X-Stream Player
-X-Stream Player
-</span>
-
-</div>
-
-<div id="testeCursor">
-
-TESTE CURSOR SRAF
-
-</div>
-<!-- =====================================
-     VÍDEO PRINCIPAL
-===================================== -->
-
 
 <video
 
@@ -574,7 +486,6 @@ webkit-playsinline
 preload="auto"
 
 ></video>
-
 
 
 
