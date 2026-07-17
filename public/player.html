@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 
 <head>
@@ -7,18 +8,29 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-<title>X-Stream Player</title>
+
+<title>X-Stream Sync Player V3</title>
+
 
 
 <style>
 
 
-html,body{
+/* =====================================
+   X-STREAM SYNC PLAYER V3
+   BASE COMPATÍVEL TV / WEBVIEW
+===================================== */
+
+
+html,
+body{
 
 margin:0;
+
 padding:0;
 
 width:100%;
+
 height:100%;
 
 background:#000;
@@ -27,39 +39,119 @@ overflow:hidden;
 
 font-family:Arial,Helvetica,sans-serif;
 
-color:#fff;
+color:white;
 
 }
 
 
 
 
-#video{
 
+/* =====================================
+   VIDEO
+===================================== */
+
+
+#mediaVideo{
 
 position:fixed;
 
 top:0;
+
 left:0;
 
-
 width:100%;
-height:100%;
 
+height:100%;
 
 background:#000;
 
-
 object-fit:contain;
 
+display:none;
 
 z-index:10;
+
+}
+
+
+
+
+
+video{
+
+outline:none;
+
+}
+
+
+
+
+
+/* =====================================
+   STATUS
+===================================== */
+
+
+#status{
+
+
+position:fixed;
+
+
+top:20px;
+
+
+left:20px;
+
+
+background:rgba(0,0,0,.75);
+
+
+padding:15px 20px;
+
+
+border-radius:10px;
+
+
+z-index:9999;
 
 
 }
 
 
 
+#statusTitle{
+
+
+font-size:24px;
+
+
+font-weight:bold;
+
+
+}
+
+
+
+#statusMessage{
+
+
+font-size:18px;
+
+
+margin-top:5px;
+
+
+}
+
+
+
+
+
+/* =====================================
+   AGUARDANDO
+===================================== */
 
 
 #waiting{
@@ -69,11 +161,18 @@ position:fixed;
 
 
 top:0;
+
+
 left:0;
 
 
 width:100%;
+
+
 height:100%;
+
+
+background:#000;
 
 
 display:flex;
@@ -88,13 +187,10 @@ justify-content:center;
 flex-direction:column;
 
 
-background:#000;
-
-
 font-size:28px;
 
 
-z-index:20;
+z-index:5000;
 
 
 }
@@ -108,6 +204,7 @@ z-index:20;
 
 width:55px;
 
+
 height:55px;
 
 
@@ -120,7 +217,7 @@ border:6px solid #555;
 border-top-color:#fff;
 
 
-animation:girar 1s linear infinite;
+animation:spin 1s linear infinite;
 
 
 margin-bottom:25px;
@@ -130,7 +227,9 @@ margin-bottom:25px;
 
 
 
-@keyframes girar{
+
+
+@keyframes spin{
 
 
 from{
@@ -154,81 +253,33 @@ transform:rotate(360deg);
 
 
 
-#status{
+/* =====================================
+   ERRO
+===================================== */
 
 
-position:fixed;
-
-
-top:20px;
-
-left:20px;
-
-
-background:rgba(0,0,0,.75);
-
-
-padding:15px 20px;
-
-
-border-radius:10px;
-
-
-z-index:50;
-
-
-}
-
-
-
-#titulo{
-
-
-font-size:24px;
-
-
-font-weight:bold;
-
-
-}
-
-
-
-#mensagem{
-
-
-font-size:18px;
-
-
-margin-top:5px;
-
-
-}
-
-
-
-
-
-
-
-#error{
-
-
-display:none;
+#errorBox{
 
 
 position:fixed;
 
 
 top:0;
+
+
 left:0;
 
 
 width:100%;
+
+
 height:100%;
 
 
 background:#000;
+
+
+display:none;
 
 
 align-items:center;
@@ -240,14 +291,56 @@ justify-content:center;
 flex-direction:column;
 
 
-font-size:25px;
+text-align:center;
 
 
-z-index:100;
+z-index:20000;
 
 
 }
 
+
+
+
+#errorTitle{
+
+
+font-size:40px;
+
+
+margin-bottom:20px;
+
+
+}
+
+
+
+
+#errorMessage{
+
+
+font-size:22px;
+
+
+max-width:80%;
+
+
+}
+
+
+
+
+
+/* =====================================
+   COMPATIBILIDADE TV
+===================================== */
+
+
+*{
+
+-webkit-tap-highlight-color:transparent;
+
+}
 
 
 
@@ -258,13 +351,23 @@ z-index:100;
 
 
 
+
 <body>
 
 
 
+
+
+<!-- =====================================
+     PLAYER PRINCIPAL
+===================================== -->
+
+
 <video
 
-id="video"
+id="mediaVideo"
+
+autoplay
 
 playsinline
 
@@ -278,6 +381,43 @@ preload="auto"
 
 
 
+
+
+
+
+<!-- =====================================
+     STATUS
+===================================== -->
+
+
+<div id="status">
+
+
+<div id="statusTitle">
+
+X-Stream
+
+</div>
+
+
+<div id="statusMessage">
+
+Conectando...
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- =====================================
+     AGUARDANDO
+===================================== -->
 
 
 <div id="waiting">
@@ -301,36 +441,24 @@ Aguardando transmissão...
 
 
 
-<div id="status">
+<!-- =====================================
+     ERRO
+===================================== -->
 
 
-<div id="titulo">
-
-X-Stream
-
-</div>
+<div id="errorBox">
 
 
-<div id="mensagem">
+<div id="errorTitle">
 
-Conectando...
+Erro
 
 </div>
 
 
-</div>
+<div id="errorMessage">
 
-
-
-
-
-
-<div id="error">
-
-
-<div>
-
-Erro ao reproduzir
+Não foi possível reproduzir.
 
 </div>
 
@@ -344,30 +472,31 @@ Erro ao reproduzir
 <script>
 
 
+
 // =====================================
-// CONFIGURAÇÃO
+// X-STREAM SYNC ENGINE V3
+// MOTOR PRINCIPAL
 // =====================================
 
 
-const servidor =
-
-"https://x-stream-56ya.onrender.com";
-
-
-
-const video =
-
-document.getElementById("video");
+var mediaVideo =
+document.getElementById("mediaVideo");
 
 
 
-let urlAtual="";
+var urlAtual = "";
 
-let indiceAtual=-1;
+var ultimoVideo = "";
 
-let ultimaPosicao=0;
+var primeiraCarga = true;
 
-let carregando=false;
+
+
+var estadoServidor = {};
+
+
+
+
 
 
 
@@ -376,12 +505,51 @@ let carregando=false;
 // =====================================
 
 
-function mostrarStatus(texto){
+function mostrarStatus(titulo,msg){
 
 
-document.getElementById(
-"mensagem"
-).innerHTML=texto;
+    var box =
+    document.getElementById("status");
+
+
+    if(box){
+
+        box.style.display="block";
+
+    }
+
+
+
+    document.getElementById(
+        "statusTitle"
+    ).innerHTML=titulo;
+
+
+
+    document.getElementById(
+        "statusMessage"
+    ).innerHTML=msg;
+
+
+
+}
+
+
+
+
+
+function esconderStatus(){
+
+
+    var box =
+    document.getElementById("status");
+
+
+    if(box){
+
+        box.style.display="none";
+
+    }
 
 
 }
@@ -391,20 +559,263 @@ document.getElementById(
 
 
 
+
 // =====================================
-// ESCONDER AGUARDANDO
+// ERRO
 // =====================================
 
 
-function pronto(){
+function mostrarErro(msg){
 
 
-document.getElementById(
-"waiting"
-).style.display="none";
+    var box =
+    document.getElementById("errorBox");
+
+
+    box.style.display="flex";
+
+
+
+    document.getElementById(
+        "errorMessage"
+    ).innerHTML=msg;
+
 
 
 }
+
+
+
+
+
+
+
+
+
+// =====================================
+// ESCONDER ESPERA
+// =====================================
+
+
+function esconderAguardando(){
+
+
+    var box =
+    document.getElementById("waiting");
+
+
+    if(box){
+
+        box.style.display="none";
+
+    }
+
+
+}
+
+
+
+
+
+
+
+// =====================================
+// CARREGAR VÍDEO
+// =====================================
+
+
+function carregarVideo(url){
+
+
+
+    if(!url){
+
+        return;
+
+    }
+
+
+
+    /*
+       evita recarregar o mesmo vídeo
+    */
+
+
+    if(urlAtual === url){
+
+        return;
+
+    }
+
+
+
+    urlAtual=url;
+
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Carregando vídeo..."
+    );
+
+
+
+    mediaVideo.pause();
+
+
+
+    mediaVideo.removeAttribute(
+        "src"
+    );
+
+
+
+    mediaVideo.load();
+
+
+
+
+    mediaVideo.src=url;
+
+
+
+    mediaVideo.load();
+
+
+
+}
+
+
+
+
+
+
+
+// =====================================
+// QUANDO O VÍDEO ESTIVER PRONTO
+// =====================================
+
+
+mediaVideo.oncanplay=function(){
+
+
+
+    mediaVideo.style.display=
+    "block";
+
+
+
+    esconderAguardando();
+
+
+
+    iniciarReproducao();
+
+
+
+};
+
+
+
+
+
+
+
+
+// =====================================
+// INICIAR PLAY
+// =====================================
+
+
+function iniciarReproducao(){
+
+
+
+    var p =
+    mediaVideo.play();
+
+
+
+    if(p !== undefined){
+
+
+
+        p.then(function(){
+
+
+            esconderStatus();
+
+
+        })
+
+
+        .catch(function(){
+
+
+            mostrarStatus(
+                "X-Stream",
+                "Aguardando autorização..."
+            );
+
+
+        });
+
+
+
+    }
+
+
+}
+
+
+
+
+
+
+
+// =====================================
+// EVENTOS DO VÍDEO
+// =====================================
+
+
+
+mediaVideo.onplaying=function(){
+
+
+    esconderStatus();
+
+
+};
+
+
+
+
+
+mediaVideo.onwaiting=function(){
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Carregando..."
+    );
+
+
+};
+
+
+
+
+
+mediaVideo.onerror=function(){
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Erro no vídeo..."
+    );
+
+
+};
 
 
 
@@ -416,335 +827,351 @@ document.getElementById(
 // =====================================
 
 
-function buscarEstado(){
+function buscarServidor(){
 
 
 
-fetch(
-servidor+"/status"
-)
-
-
-.then(function(res){
-
-return res.json();
-
-})
-
-
-.then(function(dados){
+    var xhr =
+    new XMLHttpRequest();
 
 
 
-receberEstado(dados);
+    xhr.open(
+        "GET",
+        "/status",
+        true
+    );
 
 
 
-})
+    xhr.onreadystatechange=function(){
 
 
-.catch(function(){
+        if(
+            xhr.readyState===4 &&
+            xhr.status===200
+        ){
 
+
+            try{
+
+
+                var dados =
+                JSON.parse(
+                    xhr.responseText
+                );
+
+
+
+                processarServidor(
+                    dados
+                );
+
+
+
+            }catch(e){
+
+
+
+            }
+
+
+
+        }
+
+
+
+    };
+
+
+
+    xhr.send();
+
+
+
+}
+
+
+
+
+
+
+
+// =====================================
+// PROCESSAR RESPOSTA
+// =====================================
+
+
+function processarServidor(dados){
+
+
+
+    estadoServidor=dados;
+
+
+
+    if(!dados.ativo){
+
+
+        mostrarStatus(
+            "X-Stream",
+            "Aguardando transmissão..."
+        );
+
+
+        return;
+
+
+    }
+
+
+
+
+
+
+    /*
+       COMPATIBILIDADE:
+       SERVIDOR ANTIGO + NOVO
+    */
+
+
+    var video="";
+
+
+
+    if(dados.video){
+
+
+        video=dados.video;
+
+
+    }
+
+
+
+    else if(
+        dados.fila &&
+        dados.fila[dados.atual]
+    ){
+
+
+        video =
+        dados.fila[dados.atual].url;
+
+
+    }
+
+
+
+
+
+
+    if(video){
+
+
+
+        if(video !== ultimoVideo){
+
+
+
+            ultimoVideo=video;
+
+
+
+            carregarVideo(
+                video
+            );
+
+
+
+        }
+
+
+
+    }
+
+
+
+}
+
+
+
+
+
+// =====================================
+// INICIAR CONEXÃO
+// =====================================
 
 
 mostrarStatus(
-"Servidor offline"
+    "X-Stream",
+    "Conectando..."
 );
 
 
 
-});
+buscarServidor();
 
 
 
-}
-
-
-
-
-
-
-
+setInterval(
+    buscarServidor,
+    3000
+);
 
 // =====================================
-// RECEBER ESTADO GLOBAL
+// SINCRONIZAÇÃO GLOBAL
+// PLAY / PAUSE / TEMPO
 // =====================================
 
 
-function receberEstado(dados){
+
+var ultimoAjusteTempo = 0;
 
 
 
-if(!dados.ativo){
+function sincronizarEstado(){
 
 
 
-mostrarStatus(
-"Aguardando transmissão..."
+    if(!estadoServidor){
+
+        return;
+
+    }
+
+
+
+    /*
+       PLAY GLOBAL
+    */
+
+
+    if(
+        estadoServidor.estado === "playing"
+    ){
+
+
+        if(mediaVideo.paused){
+
+
+            mediaVideo.play()
+            .catch(function(){});
+
+
+        }
+
+
+    }
+
+
+
+
+
+
+    /*
+       PAUSE GLOBAL
+    */
+
+
+    if(
+        estadoServidor.estado === "paused"
+    ){
+
+
+        if(!mediaVideo.paused){
+
+
+            mediaVideo.pause();
+
+
+        }
+
+
+    }
+
+
+
+
+
+    /*
+       SINCRONIZA TEMPO
+       evita ficar pulando toda hora
+    */
+
+
+    if(
+        typeof estadoServidor.posicao === "number"
+    ){
+
+
+
+        var agora =
+        Date.now();
+
+
+
+        if(
+            agora - ultimoAjusteTempo > 5000
+        ){
+
+
+
+            if(
+                mediaVideo.duration
+            ){
+
+
+
+                var diferenca =
+                Math.abs(
+
+                mediaVideo.currentTime -
+                estadoServidor.posicao
+
+                );
+
+
+
+
+                if(diferenca > 3){
+
+
+
+                    mediaVideo.currentTime =
+                    estadoServidor.posicao;
+
+
+
+                }
+
+
+
+            }
+
+
+
+            ultimoAjusteTempo=agora;
+
+
+
+        }
+
+
+
+    }
+
+
+
+}
+
+
+
+
+setInterval(
+    sincronizarEstado,
+    2000
 );
-
-
-
-return;
-
-
-}
-
-
-
-
-
-let item =
-
-dados.fila[dados.atual];
-
-
-
-
-if(!item){
-
-
-return;
-
-
-}
-
-
-
-
-
-
-
-// NOVO VÍDEO
-
-
-if(
-urlAtual !== item.url
-){
-
-
-
-abrirVideo(
-item.url
-);
-
-
-
-}
-
-
-
-
-
-
-
-// SINCRONIZAR PLAY
-
-
-if(
-dados.estado === "playing"
-){
-
-
-
-if(video.paused){
-
-
-video.play()
-
-.catch(function(){});
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-// SINCRONIZAR PAUSE
-
-
-if(
-dados.estado === "paused"
-){
-
-
-
-if(!video.paused){
-
-
-video.pause();
-
-
-}
-
-
-
-}
-
-
-
-
-
-
-// SINCRONIZAR TEMPO
-
-
-if(
-video.readyState >= 2
-){
-
-
-
-let diferenca =
-
-Math.abs(
-
-video.currentTime -
-
-Number(dados.posicao || 0)
-
-);
-
-
-
-
-if(
-diferenca > 8
-){
-
-
-
-video.currentTime =
-
-Number(dados.posicao);
-
-
-
-}
-
-
-
-}
-
-
-
-
-}
-
-
-
-
-
-
-
-
-// =====================================
-// ABRIR VÍDEO
-// =====================================
-
-
-function abrirVideo(url){
-
-
-
-if(carregando){
-
-return;
-
-}
-
-
-
-carregando=true;
-
-
-
-urlAtual=url;
-
-
-
-mostrarStatus(
-"Carregando vídeo..."
-);
-
-
-
-video.src=url;
-
-
-
-video.load();
-
-
-
-
-
-video.oncanplay=function(){
-
-
-
-carregando=false;
-
-
-
-pronto();
-
-
-
-mostrarStatus(
-"Reproduzindo"
-);
-
-
-
-video.play()
-
-.catch(function(){
-
-
-
-mostrarStatus(
-"Aguardando reprodução..."
-);
-
-
-
-});
-
-
-
-};
-
-
-
-
-
-video.onerror=function(){
-
-
-
-carregando=false;
-
-
-
-document.getElementById(
-"error"
-).style.display="flex";
-
-
-
-};
-
-
-
-
-}
 
 
 
@@ -755,130 +1182,56 @@ document.getElementById(
 
 
 // =====================================
-// ENVIAR POSIÇÃO PARA SERVIDOR
+// ENVIAR COMANDO AO SERVIDOR
 // =====================================
 
-
-setInterval(function(){
-
-
-
-if(
-!video.paused &&
-video.currentTime>0
-){
-
-
-
-fetch(
-
-servidor+"/atualizar-posicao",
-
-{
-
-
-method:"POST",
-
-
-headers:{
-
-
-"Content-Type":
-
-"application/json"
-
-
-},
-
-
-body:JSON.stringify({
-
-
-posicao:
-
-video.currentTime
-
-
-})
-
-
-}
-
-
-);
-
-
-
-}
-
-
-
-},3000);
-
-
-
-
-
-
-
-
-
-// =====================================
-// COMANDOS
-// =====================================
 
 
 function enviarComando(acao,valor){
 
 
 
-let dados={
-
-acao:acao
-
-};
+    var xhr =
+    new XMLHttpRequest();
 
 
 
-if(valor !== undefined){
-
-
-dados.valor=valor;
-
-
-}
-
+    xhr.open(
+        "POST",
+        "/controle",
+        true
+    );
 
 
 
-fetch(
-
-servidor+"/controle",
-
-{
-
-
-method:"POST",
+    xhr.setRequestHeader(
+        "Content-Type",
+        "application/json"
+    );
 
 
-headers:{
+
+    var dados={
+
+        acao:acao
+
+    };
 
 
-"Content-Type":
 
-"application/json"
-
-
-},
+    if(valor !== undefined){
 
 
-body:JSON.stringify(dados)
+        dados.valor=valor;
 
 
-}
+    }
 
 
-);
+
+    xhr.send(
+        JSON.stringify(dados)
+    );
 
 
 
@@ -893,168 +1246,337 @@ body:JSON.stringify(dados)
 
 
 // =====================================
-// CONTROLE TV
+// PLAY / PAUSE
 // =====================================
+
+
+
+function alternarPlay(){
+
+
+
+    if(mediaVideo.paused){
+
+
+        enviarComando(
+            "play"
+        );
+
+
+
+    }else{
+
+
+        enviarComando(
+            "pause",
+            mediaVideo.currentTime
+        );
+
+
+    }
+
+
+
+}
+
+
+
+
+
+
+
+
+
+// =====================================
+// AVANÇAR / VOLTAR
+// =====================================
+
+
+
+function avancarTempo(){
+
+
+    enviarComando(
+
+        "seek",
+
+        mediaVideo.currentTime + 10
+
+    );
+
+
+}
+
+
+
+
+
+
+
+function voltarTempo(){
+
+
+    var tempo =
+    mediaVideo.currentTime - 10;
+
+
+
+    if(tempo < 0){
+
+        tempo=0;
+
+    }
+
+
+
+    enviarComando(
+
+        "seek",
+
+        tempo
+
+    );
+
+
+}
+
+
+
+
+
+
+
+
+
+// =====================================
+// VOLUME
+// =====================================
+
+
+
+function volumeMais(){
+
+
+
+    var v =
+    mediaVideo.volume + 0.1;
+
+
+
+    if(v>1){
+
+        v=1;
+
+    }
+
+
+
+    enviarComando(
+        "volume",
+        v
+    );
+
+
+}
+
+
+
+
+
+
+
+function volumeMenos(){
+
+
+
+    var v =
+    mediaVideo.volume - 0.1;
+
+
+
+    if(v<0){
+
+        v=0;
+
+    }
+
+
+
+    enviarComando(
+        "volume",
+        v
+    );
+
+
+}
+
+
+
+
+
+
+
+
+
+// =====================================
+// PRÓXIMO / ANTERIOR
+// =====================================
+
+
+
+function proximoVideo(){
+
+
+    enviarComando(
+        "next"
+    );
+
+
+}
+
+
+
+
+
+
+
+function videoAnterior(){
+
+
+    enviarComando(
+        "previous"
+    );
+
+
+}
+
+
+
+
+
+
+
+
+
+// =====================================
+// CONTROLE REMOTO TV
+// =====================================
+
 
 
 document.onkeydown=function(e){
 
 
 
-switch(e.keyCode){
+    var tecla =
+    e.keyCode;
 
 
 
-// ENTER
+    switch(tecla){
 
-case 13:
 
 
-if(video.paused){
+        // ENTER / OK
 
+        case 13:
 
-enviarComando(
-"play"
-);
+            alternarPlay();
 
+        break;
 
-}else{
 
 
-enviarComando(
-"pause",
-video.currentTime
-);
 
 
-}
+        // ESPAÇO
 
+        case 32:
 
-break;
+            alternarPlay();
 
+        break;
 
 
 
 
 
+        // DIREITA
 
-// ESPAÇO
+        case 39:
 
-case 32:
+            avancarTempo();
 
+        break;
 
-if(video.paused){
 
 
-enviarComando(
-"play"
-);
 
 
-}else{
+        // ESQUERDA
 
+        case 37:
 
-enviarComando(
-"pause",
-video.currentTime
-);
+            voltarTempo();
 
+        break;
 
-}
 
 
-break;
 
 
+        // CIMA
 
+        case 38:
 
+            volumeMais();
 
+        break;
 
 
-// DIREITA
 
-case 39:
 
 
-enviarComando(
+        // BAIXO
 
-"seek",
+        case 40:
 
-video.currentTime+10
+            volumeMenos();
 
-);
+        break;
 
 
-break;
 
 
 
+        // PAGE DOWN
 
+        case 34:
 
+            proximoVideo();
 
+        break;
 
-// ESQUERDA
 
-case 37:
 
 
-enviarComando(
 
-"seek",
+        // PAGE UP
 
-Math.max(
-0,
-video.currentTime-10
-)
+        case 33:
 
-);
+            videoAnterior();
 
+        break;
 
-break;
 
 
-
-
-
-
-
-// PRÓXIMO
-
-case 34:
-
-
-enviarComando(
-"next"
-);
-
-
-break;
-
-
-
-
-
-
-
-// ANTERIOR
-
-case 33:
-
-
-enviarComando(
-"previous"
-);
-
-
-break;
-
-
-
-}
+    }
 
 
 
 };
+
 
 
 
@@ -1068,27 +1590,11 @@ break;
 // =====================================
 
 
-video.onclick=function(){
+
+mediaVideo.onclick=function(){
 
 
-if(video.paused){
-
-
-enviarComando(
-"play"
-);
-
-
-}else{
-
-
-enviarComando(
-"pause",
-video.currentTime
-);
-
-
-}
+    alternarPlay();
 
 
 };
@@ -1102,30 +1608,206 @@ video.currentTime
 
 
 // =====================================
-// INICIALIZAÇÃO
+// QUANDO TERMINAR
+// AVANÇA FILA
 // =====================================
 
 
+
+mediaVideo.onended=function(){
+
+
+    enviarComando(
+        "next"
+    );
+
+
+};
+
+
+
+// =====================================
+// RECUPERAÇÃO AUTOMÁTICA
+// TV / WEBVIEW
+// =====================================
+
+
+function recuperarVideo(){
+
+
+    if(urlAtual){
+
+
+        mostrarStatus(
+            "X-Stream",
+            "Recuperando vídeo..."
+        );
+
+
+        carregarVideo(
+            urlAtual
+        );
+
+
+    }
+
+
+}
+
+
+
+
+
+
+
+mediaVideo.onerror=function(){
+
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Tentando recuperar..."
+    );
+
+
+
+    setTimeout(
+
+        recuperarVideo,
+
+        5000
+
+    );
+
+
+
+};
+
+
+
+
+
+
+
+// =====================================
+// INTERNET
+// =====================================
+
+
+
+window.ononline=function(){
+
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Internet restaurada"
+    );
+
+
+
+    buscarServidor();
+
+
+
+};
+
+
+
+
+
+
+
+window.onoffline=function(){
+
+
+
+    mostrarStatus(
+        "X-Stream",
+        "Sem conexão"
+    );
+
+
+};
+
+
+
+
+
+
+
+
+
+// =====================================
+// EVITAR RELOAD CONSTANTE
+// MEMÓRIA TV
+// =====================================
+
+
+
+setInterval(function(){
+
+
+
+    try{
+
+
+        if(
+
+            mediaVideo.readyState === 0 &&
+
+            urlAtual
+
+        ){
+
+
+            mediaVideo.load();
+
+
+        }
+
+
+
+    }catch(e){}
+
+
+
+},30000);
+
+
+
+
+
+
+
+
+// =====================================
+// INICIALIZAÇÃO FINAL
+// =====================================
+
+
+
 mostrarStatus(
-"Conectando..."
+    "X-Stream",
+    "Player pronto"
 );
-
-
-
-buscarEstado();
-
-
-
-setInterval(
-
-buscarEstado,
-
-2000
-
-);
-
 </script>
 
 </body>
 
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
