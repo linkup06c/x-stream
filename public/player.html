@@ -819,10 +819,6 @@ limparMidia();
 
 
 
-mostrarStatus(
-"X-Stream",
-"Analisando mídia..."
-);
 
 
 
@@ -1182,9 +1178,6 @@ if(tentativa !== undefined){
 tentativa.then(function(){
 
 
-esconderStatus();
-
-
 esconderAguardando();
 
 
@@ -1244,8 +1237,6 @@ mediaVideo.onplaying=function(){
 esconderAguardando();
 
 
-esconderStatus();
-
 
 };
 
@@ -1266,32 +1257,6 @@ esconderAguardando();
 
 
 mediaVideo.onwaiting=function(){
-
-
-mostrarStatus(
-
-"X-Stream",
-
-"Carregando..."
-
-);
-
-
-};
-
-
-
-
-
-mediaAudio.onplaying=function(){
-
-
-esconderStatus();
-
-
-};
-
-
 
 
 
@@ -1591,17 +1556,6 @@ function recuperarPlayer(){
 if(urlAtual){
 
 
-
-mostrarStatus(
-
-"X-Stream",
-
-"Reconectando..."
-
-);
-
-
-
 receberMidia(
 
 urlAtual
@@ -1698,17 +1652,6 @@ recuperarPlayer,
 window.ononline=function(){
 
 
-
-mostrarStatus(
-
-"X-Stream",
-
-"Internet restaurada"
-
-);
-
-
-
 verificarServidor();
 
 
@@ -1721,17 +1664,6 @@ verificarServidor();
 
 
 window.onoffline=function(){
-
-
-
-mostrarStatus(
-
-"X-Stream",
-
-"Sem conexão"
-
-);
-
 
 
 };
@@ -1926,14 +1858,6 @@ mediaVideo.load();
 // FINAL
 // =====================================
 
-
-mostrarStatus(
-
-"X-Stream",
-
-"Player pronto"
-
-);
 
 
 
