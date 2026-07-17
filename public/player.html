@@ -585,7 +585,12 @@ outline:none;
 }
 
 
-#cursorTextLayer{
+/* =====================================
+   CAMADA CURSOR SRAF TV
+   NÃO INTERFERE NO PLAYER
+===================================== */
+
+#cursorLayer{
 
 position:fixed;
 
@@ -595,25 +600,34 @@ left:0;
 width:100%;
 height:100%;
 
-z-index:5;
+z-index:1;
 
-opacity:0.01;
+font-size:30px;
 
-color:#fff;
+line-height:50px;
 
-font-size:18px;
+color:transparent;
 
-line-height:20px;
+background:transparent;
 
-white-space:pre-wrap;
+overflow:hidden;
 
 user-select:text;
 
 -webkit-user-select:text;
 
+cursor:text;
+
 pointer-events:none;
 
-overflow:hidden;
+}
+
+
+/* texto invisível */
+
+#cursorLayer span{
+
+opacity:0;
 
 }
 
@@ -622,15 +636,19 @@ overflow:hidden;
 </head>
 
 
-
 <body>
-<div id="cursorTextLayer">
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+ <div id="cursorLayer">
+
+<span>
+X-Stream Player
+X-Stream Player
+X-Stream Player
+X-Stream Player
+</span>
+
 </div>
+
 <!-- =====================================
      VÍDEO PRINCIPAL
 ===================================== -->
