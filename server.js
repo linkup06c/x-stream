@@ -1,11 +1,14 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+/* SERVE A PASTA public */
+app.use(express.static(path.join(__dirname, "public")));
 
 let transmissao = {
     ativo: false,
@@ -13,75 +16,48 @@ let transmissao = {
     iniciado: 0
 };
 
-
-app.get("/", (req,res)=>{
-
+app.get("/", (req, res) => {
     res.send("Servidor X-Stream online");
-
 });
 
+/* PLAYER DA TV */
+app.get("/player", function(req, res){
+    res.sendFile(path.join(__dirname, "public", "player.html"));
+});
 
-
-app.post("/enviar", (req,res)=>{
+app.post("/enviar", (req, res) => {
 
     const url = req.body.url;
 
-
-    if(!url){
-
+    if (!url) {
         return res.json({
-            erro:"URL não enviada"
+            erro: "URL não enviada"
         });
-
     }
 
-
     transmissao = {
-
-        ativo:true,
-
-        video:url,
-
-        iniciado:Date.now()
-
+        ativo: true,
+        video: url,
+        iniciado: Date.now()
     };
 
-
-    console.log(
-        "Nova transmissão:",
-        url
-    );
-
+    console.log("Nova transmissão:", url);
 
     res.json({
-
-        sucesso:true,
-
+        sucesso: true,
         transmissao
-
     });
 
-
 });
 
-
-
-app.get("/status",(req,res)=>{
-
+app.get("/status", (req, res) => {
     res.json(transmissao);
-
 });
-
-
 
 const PORT = process.env.PORT || 3000;
 
+app.listen(PORT, () => {
 
-app.listen(PORT,()=>{
-
-    console.log(
-        "Servidor rodando na porta:",
-        PORT
-    );
+    console.log("Servidor rodando na porta:", PORT);
 
 });
