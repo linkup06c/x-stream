@@ -585,11 +585,7 @@ outline:none;
 }
 
 
-/* =====================================
-   CAMADA PARA TESTE DO CURSOR SRAF
-===================================== */
-
-#tvCursorLayer{
+#cursorTextLayer{
 
 position:fixed;
 
@@ -599,24 +595,25 @@ left:0;
 width:100%;
 height:100%;
 
+z-index:5;
+
 opacity:0.01;
 
-background:transparent;
+color:#fff;
 
-border:none;
+font-size:18px;
 
-outline:none;
+line-height:20px;
 
-resize:none;
+white-space:pre-wrap;
+
+user-select:text;
+
+-webkit-user-select:text;
+
+pointer-events:none;
 
 overflow:hidden;
-
-color:transparent;
-caret-color:transparent;
-
-z-index:9998;
-
-font-size:1px;
 
 }
 
@@ -627,9 +624,13 @@ font-size:1px;
 
 
 <body>
-<!-- CAMPO FANTASMA PARA CURSOR DA TV -->
-<textarea id="tvCursorLayer" readonly tabindex="-1"></textarea>
-
+<div id="cursorTextLayer">
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<br>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</div>
 <!-- =====================================
      VÍDEO PRINCIPAL
 ===================================== -->
@@ -2342,54 +2343,6 @@ mostrarStatus(
 
 })();
 
-
-
-
-
-// =====================================
-// CAMADA CURSOR SRAF
-// =====================================
-
-(function(){
-
-var layer =
-document.getElementById("tvCursorLayer");
-
-if(!layer) return;
-
-// impede seleção
-layer.value="";
-
-// impede menu
-layer.oncontextmenu=function(e){
-
-    e.preventDefault();
-
-    return false;
-
-};
-
-// remove foco imediatamente
-layer.onfocus=function(){
-
-    setTimeout(function(){
-
-        layer.blur();
-
-    },1);
-
-};
-
-// impede qualquer tecla
-layer.onkeydown=function(e){
-
-    e.preventDefault();
-
-    return false;
-
-};
-
-})();
 
 </script>
 
