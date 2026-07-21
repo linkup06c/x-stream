@@ -2,57 +2,291 @@
 <html lang="pt-BR">
 
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>X-Stream Engine Ultra Supremo</title>
 
-<!-- SUPORTE A STREAMING HLS (M3U8 / LIVES / IPTV) -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<title>X-Stream Universal Player</title>
+
 
 <style>
-html, body {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
-    background: #000;
-    overflow: hidden;
-    font-family: Arial, Helvetica, sans-serif;
-    color: white;
-    touch-action: none;
-    -webkit-user-select: none;
-    user-select: none;
+
+/* =====================================
+   X-STREAM TV PLAYER
+   VISUAL COMPATÍVEL TV / WEBVIEW
+===================================== */
+
+html,
+body{
+
+margin:0;
+padding:0;
+
+width:100%;
+height:100%;
+
+background:#000;
+
+overflow:hidden;
+
+font-family:Arial,Helvetica,sans-serif;
+
+color:white;
+
 }
 
-#mediaVideo {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: #000; 
-    object-fit: contain;
-    display: none; 
-    z-index: 10;
-    transform: translate3d(0, 0, 0);
-    will-change: transform;
-    backface-visibility: hidden;
+
+/* =====================================
+   VÍDEO
+===================================== */
+
+#mediaVideo{
+
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+background:#000;
+
+object-fit:contain;
+
+display:none;
+
+z-index:10;
+
 }
 
-#mediaAudio { display: none; }
 
-#mediaImage {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: #000; object-fit: contain;
-    display: none; z-index: 15;
+/* =====================================
+   ÁUDIO
+===================================== */
+
+#mediaAudio{
+
+display:none;
+
 }
 
-#errorBox {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%; background: #000;
-    display: none; align-items: center; justify-content: center;
-    flex-direction: column; text-align: center; z-index: 20000;
+
+/* =====================================
+   IMAGEM
+===================================== */
+
+#mediaImage{
+
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+background:#000;
+
+object-fit:contain;
+
+display:none;
+
+z-index:15;
+
 }
 
-#errorTitle { font-size: 40px; color: #ff3333; margin-bottom: 20px; }
-#errorMessage { font-size: 22px; max-width: 80%; color: #ccc; }
 
+/* =====================================
+   TELA AGUARDANDO
+===================================== */
+
+#waiting{
+
+position:fixed;
+
+top:0;
+left:0;
+
+width:100%;
+height:100%;
+
+background:#000;
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+flex-direction:column;
+
+font-size:28px;
+
+z-index:5000;
+
+}
+
+
+.loader{
+
+width:55px;
+
+height:55px;
+
+border-radius:50%;
+
+border:6px solid #555;
+
+border-top-color:white;
+
+animation:
+spin 1s linear infinite;
+
+margin-bottom:25px;
+
+}
+
+
+@keyframes spin{
+
+from{
+
+transform:rotate(0deg);
+
+}
+
+to{
+
+transform:rotate(360deg);
+
+}
+
+}
+
+
+/* =====================================
+   ERRO
+===================================== */
+
+#errorBox{
+
+position:fixed;
+
+top:0;
+
+left:0;
+
+width:100%;
+
+height:100%;
+
+background:#000;
+
+display:none;
+
+align-items:center;
+
+justify-content:center;
+
+flex-direction:column;
+
+text-align:center;
+
+z-index:20000;
+
+}
+
+
+#errorTitle{
+
+font-size:40px;
+
+margin-bottom:20px;
+
+}
+
+
+#errorMessage{
+
+font-size:22px;
+
+max-width:80%;
+
+}
+
+
+/* =====================================
+   INFORMAÇÃO ÁUDIO
+===================================== */
+
+#audioInfo{
+
+position:fixed;
+
+top:0;
+
+left:0;
+
+width:100%;
+
+height:100%;
+
+background:#000;
+
+display:none;
+
+align-items:center;
+
+justify-content:center;
+
+flex-direction:column;
+
+z-index:20;
+
+}
+
+
+#audioInfo:before{
+
+content:"♫";
+
+font-size:120px;
+
+margin-bottom:30px;
+
+}
+
+
+#audioTitle{
+
+font-size:32px;
+
+font-weight:bold;
+
+}
+
+
+/* =====================================
+   COMPATIBILIDADE TV
+===================================== */
+
+button,
+video,
+audio,
+img{
+
+outline:none;
+
+}
+
+
+*{
+
+-webkit-tap-highlight-color:transparent;
+
+}
 
 
 /* =====================================
@@ -60,318 +294,143 @@ html, body {
 ===================================== */
 
 #cursorLayer{
+
 position:fixed;
+
 top:0;
+
 left:0;
+
 width:100%;
+
 height:100%;
+
+
 z-index:99999;
+
+
 color:transparent;
+
 background:transparent;
+
+
 user-select:text;
+
 -webkit-user-select:text;
+
+
 cursor:text;
+
+
 }
 
-
-
 </style>
+
 </head>
 
 <body>
 
 
 <div id="cursorLayer">
+
+Texto de teste invisível
+
 </div>
 
-<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
-<audio id="mediaAudio" autoplay preload="auto"></audio>
-<img id="mediaImage">
+
+<!-- =====================================
+     VÍDEO PRINCIPAL
+===================================== -->
+
+<video
+
+id="mediaVideo"
+
+autoplay
+
+playsinline
+
+webkit-playsinline
+
+preload="auto"
+
+></video>
+
+
+<!-- =====================================
+     ÁUDIO
+===================================== -->
+
+<audio
+
+id="mediaAudio"
+
+autoplay
+
+preload="auto"
+
+></audio>
+
+
+<!-- =====================================
+     IMAGEM
+===================================== -->
+
+<img
+
+id="mediaImage"
+
+>
+
+
+<!-- =====================================
+     INFORMAÇÃO ÁUDIO
+===================================== -->
+
+<div id="audioInfo">
+
+<div id="audioTitle">
+
+Áudio
+
+</div>
+
+</div>
+
+
+<!-- =====================================
+     AGUARDANDO
+===================================== -->
+
+<div id="waiting">
+
+<div class="loader"></div>
+
+<div>
+
+Aguardando transmissão...
+
+</div>
+
+</div>
+
+
+<!-- =====================================
+     ERRO
+===================================== -->
 
 <div id="errorBox">
-    <div id="errorTitle">Erro</div>
-    <div id="errorMessage">Não foi possível reproduzir este formato.</div>
+
+<div id="errorTitle">
+
+Erro
+
 </div>
 
-<script>
-var SERVER_URL = (window.location.origin && window.location.origin.startsWith("http"))
-    ? window.location.origin 
-    : "https://x-stream-56ya.onrender.com";
+<div id="errorMessage">
 
-var mediaVideo = document.getElementById("mediaVideo");
-var mediaAudio = document.getElementById("mediaAudio");
-var mediaImage = document.getElementById("mediaImage");
-var statusBadge = document.getElementById("statusBadge");
-var statusText = document.getElementById("statusText");
-var keyDebug = document.getElementById("keyDebug");
+Não foi possível reproduzir.
 
-var tipoAtual = "";
-var urlAtual = "";
-var ultimaURL = "";
-var pollTimeout = null;
-var hlsPlayer = null;
-var debugTimeout = null;
-var tempoInicialAjustado = false;
-var ultimoComandoIdProcessado = 0;
+</div>
 
-function atualizarStatus(isLive){
-    if(isLive){
-        statusBadge.className = "live";
-        statusText.innerHTML = "LIVE";
-    } else {
-        statusBadge.className = "offline";
-        statusText.innerHTML = "OFFLINE";
-    }
-}
-
-function mostrarErro(msg){
-    var box = document.getElementById("errorBox");
-    if(box){
-        box.style.display = "flex";
-        var texto = document.getElementById("errorMessage");
-        if(texto) texto.innerHTML = msg;
-    }
-}
-
-function limparMidia(){
-    atualizarStatus(false);
-    tempoInicialAjustado = false;
-
-    if (hlsPlayer) {
-        try {
-            hlsPlayer.destroy();
-            hlsPlayer = null;
-        } catch(e){}
-    }
-
-    try {
-        mediaVideo.pause();
-        mediaVideo.removeAttribute("src");
-        mediaVideo.load();
-    } catch(e){}
-
-    try {
-        mediaAudio.pause();
-        mediaAudio.removeAttribute("src");
-        mediaAudio.load();
-    } catch(e){}
-
-    try {
-        mediaImage.removeAttribute("src");
-    } catch(e){}
-}
-
-function receberMidia(url, tempoInicial){
-    if(!url || url === urlAtual) return;
-    urlAtual = url;
-    limparMidia();
-
-    var urlLimpa = url.split('?')[0].toLowerCase();
-
-    if (urlLimpa.endsWith('.m3u8')) {
-        tentarHLS(url, tempoInicial);
-    } else {
-        tentarVideo(url, tempoInicial);
-    }
-}
-
-function tentarHLS(url, tempoInicial) {
-    if (Hls.isSupported()) {
-        hlsPlayer = new Hls({
-            enableWorker: false, 
-            maxBufferLength: 10,
-            maxMaxBufferLength: 20,
-            lowLatencyMode: false
-        });
-        hlsPlayer.loadSource(url);
-        hlsPlayer.attachMedia(mediaVideo);
-        hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-            tipoAtual = "video";
-            mostrarVideo();
-            iniciarVideo(tempoInicial);
-        });
-        hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) { tentarVideo(url, tempoInicial); }
-        });
-    } else if (mediaVideo.canPlayType('application/vnd.apple.mpegurl')) {
-        mediaVideo.src = url;
-        tentarVideo(url, tempoInicial);
-    } else {
-        tentarVideo(url, tempoInicial);
-    }
-}
-
-function tentarVideo(url, tempoInicial){
-    var confirmado = false;
-    mediaVideo.src = url;
-    mediaVideo.load();
-
-    function ativarVideo(){
-        if(confirmado) return;
-        confirmado = true;
-        tipoAtual = "video";
-        mostrarVideo();
-        iniciarVideo(tempoInicial);
-    }
-
-    mediaVideo.onloadeddata = ativarVideo;
-    mediaVideo.oncanplay = ativarVideo;
-    mediaVideo.onerror = function(){ if(!confirmado) tentarAudio(url); };
-}
-
-function tentarAudio(url){
-    var confirmado = false;
-    mediaAudio.src = url;
-    mediaAudio.load();
-
-    mediaAudio.oncanplay = function(){
-        if(confirmado) return;
-        confirmado = true; 
-        tipoAtual = "audio";
-        mediaAudio.play();
-        atualizarStatus(true);
-    };
-
-    mediaAudio.onerror = function(){ if(!confirmado) tentarImagem(url); };
-}
-
-function tentarImagem(url){
-    var img = new Image();
-    img.onload = function(){
-        tipoAtual = "image"; 
-        mediaImage.src = url;
-        mostrarImagem(); 
-        atualizarStatus(true);
-    };
-    img.onerror = function(){ 
-        atualizarStatus(false);
-        mostrarErro("Formato ou link não suportado"); 
-    };
-    img.src = url;
-}
-
-function esconderTodos(){
-    mediaVideo.style.display = "none";
-    mediaAudio.style.display = "none";
-    mediaImage.style.display = "none";
-}
-
-function mostrarVideo(){ esconderTodos(); mediaVideo.style.display = "block"; }
-function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
-
-function iniciarVideo(tempoInicial){
-    if(tempoInicial && !tempoInicialAjustado){
-        try { mediaVideo.currentTime = Number(tempoInicial); } catch(e){}
-        tempoInicialAjustado = true;
-    }
-
-    var tentativa = mediaVideo.play();
-    if(tentativa !== undefined){
-        tentativa.then(function(){ 
-            atualizarStatus(true);
-        }).catch(function(){ 
-            setTimeout(function(){ iniciarVideo(tempoInicial); }, 500); 
-        });
-    }
-}
-
-mediaVideo.onplaying = function() { atualizarStatus(true); };
-mediaVideo.onpause = function() { atualizarStatus(false); };
-
-// MOTOR DE POLLING LEVE PARA SMART TV
-function verificarServidor(){
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
-
-    xhr.onreadystatechange = function(){
-        if(xhr.readyState === 4){
-            if(xhr.status === 200){
-                try{
-                    var dados = JSON.parse(xhr.responseText);
-
-                    var url = "";
-                    if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
-                        url = dados.fila[dados.atual].url;
-                    }
-                    if(!url && dados.video){ url = dados.video; }
-
-                    // Troca de mídia
-                    if((dados.ativo || dados.playing !== false) && url){
-                        if(url !== ultimaURL){
-                            ultimaURL = url;
-                            receberMidia(url, dados.currentTime || 0);
-                        }
-                    } else if (!dados.ativo && !dados.playing && !dados.video) {
-                        if(urlAtual !== ""){
-                            urlAtual = ""; 
-                            ultimaURL = "";
-                            limparMidia(); 
-                            esconderTodos(); 
-                            atualizarStatus(false);
-                        }
-                    }
-
-                    // Controle simples de Play/Pause, Mute/Volume
-                    if(tipoAtual === "video" && mediaVideo){
-                        var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
-
-                        if(isPlaying === false && !mediaVideo.paused){
-                            mediaVideo.pause();
-                        } else if(isPlaying === true && mediaVideo.paused){
-                            mediaVideo.play().catch(function(){});
-                        }
-
-                        if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
-                        if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
-
-                        // Execução de salto de seek (Avançar/Voltar 15s)
-                        if(dados.seek && dados.seek !== 0 && dados.comandoId !== ultimoComandoIdProcessado){
-                            ultimoComandoIdProcessado = dados.comandoId;
-                            var novoTempo = mediaVideo.currentTime + dados.seek;
-                            mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
-                            enviarComando("zerar_seek");
-                        }
-                    }
-
-                    // Exibição visual de feedback de comandos na tela
-                    if(dados.ultimoComando && dados.comandoId !== ultimoComandoIdProcessado){
-                        ultimoComandoIdProcessado = dados.comandoId;
-                        keyDebug.innerText = "TECLA: " + dados.ultimoComando.toUpperCase();
-                        keyDebug.style.display = "block";
-                        clearTimeout(debugTimeout);
-                        debugTimeout = setTimeout(function(){ keyDebug.style.display = "none"; }, 2000);
-                    }
-
-                }catch(e){}
-            } else {
-                atualizarStatus(false);
-            }
-
-            clearTimeout(pollTimeout);
-            pollTimeout = setTimeout(verificarServidor, 3000);
-        }
-    };
-
-    xhr.onerror = function() { 
-        atualizarStatus(false);
-        clearTimeout(pollTimeout);
-        pollTimeout = setTimeout(verificarServidor, 3000); 
-    };
-    xhr.send();
-}
-
-verificarServidor();
-
-// Quando o vídeo termina, dispara o avanço automático (O servidor reinicia o ciclo se for o último)
-mediaVideo.onended = function(){ enviarComando("next"); };
-
-function enviarComando(acao){
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", SERVER_URL + "/controle", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.send(JSON.stringify({ acao: acao }));
-}
-</script>
-
-</body>
-</html>
+</div>
