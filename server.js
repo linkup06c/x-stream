@@ -1,45 +1,53 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // =========================================================
-// ESTADO MESTRE DA TRANSMISSÃO (O "Coração" que não para)
+// ESTADO MESTRE DA TRANSMISSÃO (Servidor Central)
 // =========================================================
 let masterState = {
-  video: null,          // URL da mídia atual
-  playing: false,       // Está rodando ou pausado?
-  position: 0,          // Posição salva em segundos
-  lastUpdated: Date.now() // Timestamp da última alteração de estado
+  video: null,          // URL do vídeo/áudio atual
+  ativo: false,         // Transmissão ativa?
+  playing: false,       // Rodando ou pausado?
+  reproduzindo: false,  // Campo de compatibilidade com a TV
+  currentTime: 0,       // Tempo em segundos
+  updatedAt: Date.now(),// Timestamp do servidor
+  volume: 100,          // Volume 0 a 100
+  mudo: false,
+  seek: 0,
+  fila: [],
+  atual: 0
 };
 
 /**
- * Calcula em qual segundo o vídeo está NESTE EXATO MILISSEGUNDO,
- * baseado no relógio interno do servidor.
+ * Retorna o tempo exato em segundos do vídeo no milissegundo atual
  */
 function getCurrentPosition() {
   if (!masterState.playing || !masterState.video) {
-    return masterState.position;
+    return masterState.currentTime;
   }
-  const elapsedSeconds = (Date.now() - masterState.lastUpdated) / 1000;
-  return masterState.position + elapsedSeconds;
+  const elapsedSeconds = (Date.now() - masterState.updatedAt) / 1000;
+  return masterState.currentTime + elapsedSeconds;
 }
 
 /**
- * Envia o estado mestre atualizado para TODOS os dispositivos conectados.
+ * Notifica clientes WebSocket (o segundo player/WebSoft)
  */
 function broadcastState() {
   const currentPos = getCurrentPosition();
   const payload = JSON.stringify({
     tipo: "sync-transmission",
-    video: masterState.video,
+    ...masterState,
     currentTime: currentPos,
-    playing: masterState.playing,
+    reproduzindo: masterState.playing,
     updatedAt: Date.now()
   });
 
@@ -51,113 +59,35 @@ function broadcastState() {
 }
 
 // =========================================================
-// GERENCIADOR WEBSOCKET (CONEXÕES EM TEMPO REAL)
+// ROTA GET /status (HTTP POLLING DA SMART TV)
 // =========================================================
-wss.on('connection', (ws) => {
-  console.log('📺 Novo dispositivo sintonizou na transmissão.');
-
-  // Assim que o dispositivo conecta, o servidor manda O PONTO EXATO da live
-  ws.send(JSON.stringify({
-    tipo: "sync-transmission",
+app.get('/status', (req, res) => {
+  const currentPos = getCurrentPosition();
+  
+  res.json({
+    ...masterState,
     video: masterState.video,
-    currentTime: getCurrentPosition(),
+    ativo: !!masterState.video,
     playing: masterState.playing,
-    updatedAt: Date.now()
-  }));
-
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-
-      // Dispositivo pediu sincronização explícita
-      if (data.tipo === 'sync-request') {
-        ws.send(JSON.stringify({
-          tipo: "sync-transmission",
-          video: masterState.video,
-          currentTime: getCurrentPosition(),
-          playing: masterState.playing,
-          updatedAt: Date.now()
-        }));
-        return;
-      }
-
-      // Nova Mídia enviada por qualquer dispositivo
-      if (data.tipo === 'midia' && data.url) {
-        masterState.video = data.url;
-        masterState.playing = true;
-        masterState.position = 0;
-        masterState.lastUpdated = Date.now();
-        console.log(' Nova mídia iniciada no servidor:', data.url);
-        broadcastState();
-        return;
-      }
-
-      // Comandos do Controle Remoto
-      const acao = data.acao || data.type;
-      if (acao) {
-        console.log('Comando recebido no servidor:', acao);
-
-        switch (acao) {
-          case 'play':
-          case 'resume':
-          case 'resume-video':
-            if (!masterState.playing) {
-              masterState.playing = true;
-              masterState.lastUpdated = Date.now();
-            }
-            break;
-
-          case 'pause':
-          case 'pause-video':
-            if (masterState.playing) {
-              masterState.position = getCurrentPosition(); // Congela o tempo onde parou
-              masterState.playing = false;
-              masterState.lastUpdated = Date.now();
-            }
-            break;
-
-          case 'stop':
-          case 'clear':
-          case 'back-to-standby':
-          case 'power':
-            masterState.video = null;
-            masterState.playing = false;
-            masterState.position = 0;
-            masterState.lastUpdated = Date.now();
-            break;
-
-          case 'seek':
-          case 'seek-video':
-            if (data.time !== undefined) {
-              masterState.position = Number(data.time);
-              masterState.lastUpdated = Date.now();
-            }
-            break;
-        }
-
-        // Transmite o novo estado para todos os players sintonizados
-        broadcastState();
-      }
-    } catch (err) {
-      console.error("Erro ao processar mensagem WebSocket:", err);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log('Dispositivo desconectou (a transmissão continua rodando no servidor).');
+    reproduzindo: masterState.playing,
+    currentTime: currentPos,
+    position: currentPos,
+    updatedAt: masterState.updatedAt
   });
 });
 
 // =========================================================
-// ROTAS HTTP (COMPATIBILIDADE COM O APP ANDROID)
+// ROTAS POST DE CONTROLE E ENVIO
 // =========================================================
 app.post('/enviar', (req, res) => {
   const url = req.body.url;
   if (url) {
     masterState.video = url;
+    masterState.ativo = true;
     masterState.playing = true;
-    masterState.position = 0;
-    masterState.lastUpdated = Date.now();
+    masterState.reproduzindo = true;
+    masterState.currentTime = 0;
+    masterState.updatedAt = Date.now();
     broadcastState();
   }
   res.json({ success: true, state: masterState });
@@ -165,27 +95,92 @@ app.post('/enviar', (req, res) => {
 
 app.post('/controle', (req, res) => {
   const acao = req.body.acao;
+
   if (acao) {
-    if (acao === 'play' || acao === 'resume') {
-      masterState.playing = true;
-      masterState.lastUpdated = Date.now();
-    } else if (acao === 'pause') {
-      masterState.position = getCurrentPosition();
-      masterState.playing = false;
-      masterState.lastUpdated = Date.now();
-    } else if (acao === 'stop' || acao === 'power') {
-      masterState.video = null;
-      masterState.playing = false;
-      masterState.position = 0;
-      masterState.lastUpdated = Date.now();
+    switch (acao) {
+      case 'play':
+      case 'resume':
+        if (!masterState.playing) {
+          masterState.playing = true;
+          masterState.reproduzindo = true;
+          masterState.updatedAt = Date.now();
+        }
+        break;
+
+      case 'pause':
+        if (masterState.playing) {
+          masterState.currentTime = getCurrentPosition();
+          masterState.playing = false;
+          masterState.reproduzindo = false;
+          masterState.updatedAt = Date.now();
+        }
+        break;
+
+      case 'zerar_seek':
+        masterState.seek = 0;
+        break;
+
+      case 'next':
+        if (masterState.fila && masterState.fila.length > 0 && masterState.atual < masterState.fila.length - 1) {
+          masterState.atual++;
+          masterState.video = masterState.fila[masterState.atual].url;
+          masterState.currentTime = 0;
+          masterState.playing = true;
+          masterState.reproduzindo = true;
+          masterState.updatedAt = Date.now();
+        }
+        break;
+
+      case 'prev':
+        if (masterState.fila && masterState.fila.length > 0 && masterState.atual > 0) {
+          masterState.atual--;
+          masterState.video = masterState.fila[masterState.atual].url;
+          masterState.currentTime = 0;
+          masterState.playing = true;
+          masterState.reproduzindo = true;
+          masterState.updatedAt = Date.now();
+        }
+        break;
     }
+
     broadcastState();
   }
+
   res.json({ success: true, state: masterState });
 });
 
+// =========================================================
+// WEBSOCKET (PARA O SEGUNDO PLAYER / APP WEBSOFT)
+// =========================================================
+wss.on('connection', (ws) => {
+  // Envia estado inicial ao conectar
+  ws.send(JSON.stringify({
+    tipo: "sync-transmission",
+    ...masterState,
+    currentTime: getCurrentPosition(),
+    reproduzindo: masterState.playing,
+    updatedAt: Date.now()
+  }));
+
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+
+      if (data.tipo === 'sync-request') {
+        ws.send(JSON.stringify({
+          tipo: "sync-transmission",
+          ...masterState,
+          currentTime: getCurrentPosition(),
+          reproduzindo: masterState.playing,
+          updatedAt: Date.now()
+        }));
+      }
+    } catch(e) {}
+  });
+});
+
 app.get('/', (req, res) => {
-  res.send('Servidor X-Stream Live rodando com sucesso!');
+  res.send('Servidor X-Stream Live Central Online');
 });
 
 const PORT = process.env.PORT || 3000;
