@@ -43,63 +43,6 @@ html, body {
     display: none; z-index: 15;
 }
 
-/* INDICADOR DISCRETO LIVE / OFFLINE */
-#statusBadge {
-    position: fixed;
-    top: 25px;
-    left: 25px;
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 6px 14px;
-    border-radius: 20px;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    transition: all 0.3s ease;
-}
-
-.dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    transition: background 0.3s ease, box-shadow 0.3s ease;
-}
-
-.statusText {
-    color: #ffffff !important;
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-}
-
-#statusBadge.offline .dot {
-    background: #ff3333;
-    box-shadow: 0 0 8px #ff3333;
-}
-
-#statusBadge.live .dot {
-    background: #00ff66;
-    box-shadow: 0 0 10px #00ff66;
-}
-
-#keyDebug {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    z-index: 99999;
-    background: rgba(0, 0, 0, 0.7);
-    color: #00ff66;
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-family: monospace;
-    display: block;
-    border: 1px solid rgba(0, 255, 102, 0.3);
-}
-
 #errorBox {
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%; background: #000;
@@ -109,19 +52,37 @@ html, body {
 
 #errorTitle { font-size: 40px; color: #ff3333; margin-bottom: 20px; }
 #errorMessage { font-size: 22px; max-width: 80%; color: #ccc; }
+
+
+
+/* =====================================
+   CURSOR ORIGINAL DO PROJETO
+===================================== */
+
+#cursorLayer{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:99999;
+color:transparent;
+background:transparent;
+user-select:text;
+-webkit-user-select:text;
+cursor:text;
+}
+
+
+
 </style>
 </head>
 
 <body>
 
-<!-- EMBLEMA STATUS LIVE / OFFLINE -->
-<div id="statusBadge" class="offline">
-    <span class="dot"></span>
-    <span id="statusText" class="statusText">OFFLINE</span>
-</div>
 
-<!-- DIAGNÓSTICO DE TECLAS DA TV -->
-<div id="keyDebug">TECLA: -</div>
+<div id="cursorLayer">
+</div>
 
 <video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
 <audio id="mediaAudio" autoplay preload="auto"></audio>
