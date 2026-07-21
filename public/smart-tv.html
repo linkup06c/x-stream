@@ -10,9 +10,6 @@
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <style>
-/* =====================================
-   X-STREAM ULTRA SUPREMO - MINIMALISTA
-===================================== */
 html, body {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
@@ -44,10 +41,9 @@ html, body {
     width: 100%; height: 100%;
     background: #000; object-fit: contain;
     display: none; z-index: 15;
-    transform: translate3d(0, 0, 0);
 }
 
-/* 🟢🔴 INDICADOR DISCRETO LIVE / OFFLINE (CANTO SUPERIOR ESQUERDO) */
+/* INDICADOR DISCRETO LIVE / OFFLINE */
 #statusBadge {
     position: fixed;
     top: 25px;
@@ -79,19 +75,16 @@ html, body {
     text-transform: uppercase;
 }
 
-/* ESTADO OFFLINE (Vermelho) */
 #statusBadge.offline .dot {
     background: #ff3333;
     box-shadow: 0 0 8px #ff3333;
 }
 
-/* ESTADO LIVE (Verde) */
 #statusBadge.live .dot {
     background: #00ff66;
     box-shadow: 0 0 10px #00ff66;
 }
 
-/* 🔍 PAINEL DE DIAGNÓSTICO DE TECLAS (CANTO SUPERIOR DIREITO) */
 #keyDebug {
     position: fixed;
     top: 25px;
@@ -116,29 +109,10 @@ html, body {
 
 #errorTitle { font-size: 40px; color: #ff3333; margin-bottom: 20px; }
 #errorMessage { font-size: 22px; max-width: 80%; color: #ccc; }
-
-#audioInfo {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%; background: #000;
-    display: none; align-items: center; justify-content: center;
-    flex-direction: column; z-index: 20;
-}
-
-#audioInfo:before { content: "♫"; font-size: 120px; color: #00e5ff; margin-bottom: 30px; }
-#audioTitle { font-size: 32px; font-weight: bold; }
-
-#cursorLayer {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%; z-index: 99999;
-    color: transparent; background: transparent;
-    cursor: text;
-}
 </style>
 </head>
 
 <body>
-
-<div id="cursorLayer">Texto de teste invisível</div>
 
 <!-- EMBLEMA STATUS LIVE / OFFLINE -->
 <div id="statusBadge" class="offline">
@@ -149,13 +123,9 @@ html, body {
 <!-- DIAGNÓSTICO DE TECLAS DA TV -->
 <div id="keyDebug">TECLA: -</div>
 
-<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="metadata" crossorigin="anonymous"></video>
-<audio id="mediaAudio" autoplay preload="metadata"></audio>
+<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
+<audio id="mediaAudio" autoplay preload="auto"></audio>
 <img id="mediaImage">
-
-<div id="audioInfo">
-    <div id="audioTitle">Áudio</div>
-</div>
 
 <div id="errorBox">
     <div id="errorTitle">Erro</div>
@@ -163,9 +133,6 @@ html, body {
 </div>
 
 <script>
-// =====================================
-// X-STREAM ENGINE ULTRA SUPREMO
-// =====================================
 var SERVER_URL = (window.location.origin && window.location.origin.startsWith("http"))
     ? window.location.origin 
     : "https://x-stream-56ya.onrender.com";
@@ -180,19 +147,11 @@ var keyDebug = document.getElementById("keyDebug");
 var tipoAtual = "";
 var urlAtual = "";
 var ultimaURL = "";
-var dadosServidor = {};
 var pollTimeout = null;
 var hlsPlayer = null;
 var debugTimeout = null;
+var tempoInicialAjustado = false;
 
-(function(){
-    try {
-        var cursor = document.getElementById("cursorLayer");
-        if(cursor) cursor.style.cursor = "text";
-    }catch(e){}
-})();
-
-// GERENCIADOR DE STATUS (LIVE / OFFLINE)
 function atualizarStatus(isLive){
     if(isLive){
         statusBadge.className = "live";
@@ -212,9 +171,9 @@ function mostrarErro(msg){
     }
 }
 
-// GARBAGE COLLECTION PROFUNDO
 function limparMidia(){
     atualizarStatus(false);
+    tempoInicialAjustado = false;
 
     if (hlsPlayer) {
         try {
@@ -240,7 +199,7 @@ function limparMidia(){
     } catch(e){}
 }
 
-function receberMidia(url){
+function receberMidia(url, tempoInicial){
     if(!url || url === urlAtual) return;
     urlAtual = url;
     limparMidia();
@@ -248,40 +207,40 @@ function receberMidia(url){
     var urlLimpa = url.split('?')[0].toLowerCase();
 
     if (urlLimpa.endsWith('.m3u8')) {
-        tentarHLS(url);
+        tentarHLS(url, tempoInicial);
     } else {
-        tentarVideo(url);
+        tentarVideo(url, tempoInicial);
     }
 }
 
-function tentarHLS(url) {
+function tentarHLS(url, tempoInicial) {
     if (Hls.isSupported()) {
+        // Configuração leve e ideal para Smart TVs
         hlsPlayer = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-            backBufferLength: 30
+            enableWorker: false, 
+            maxBufferLength: 10,
+            maxMaxBufferLength: 20,
+            lowLatencyMode: false
         });
         hlsPlayer.loadSource(url);
         hlsPlayer.attachMedia(mediaVideo);
         hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
             tipoAtual = "video";
             mostrarVideo();
-            iniciarVideo();
+            iniciarVideo(tempoInicial);
         });
         hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                tentarVideo(url);
-            }
+            if (data.fatal) { tentarVideo(url, tempoInicial); }
         });
     } else if (mediaVideo.canPlayType('application/vnd.apple.mpegurl')) {
         mediaVideo.src = url;
-        tentarVideo(url);
+        tentarVideo(url, tempoInicial);
     } else {
-        tentarVideo(url);
+        tentarVideo(url, tempoInicial);
     }
 }
 
-function tentarVideo(url){
+function tentarVideo(url, tempoInicial){
     var confirmado = false;
     mediaVideo.src = url;
     mediaVideo.load();
@@ -291,16 +250,12 @@ function tentarVideo(url){
         confirmado = true;
         tipoAtual = "video";
         mostrarVideo();
-        iniciarVideo();
+        iniciarVideo(tempoInicial);
     }
 
     mediaVideo.onloadeddata = ativarVideo;
     mediaVideo.oncanplay = ativarVideo;
-
-    mediaVideo.onerror = function(){
-        if(confirmado) return;
-        tentarAudio(url);
-    };
+    mediaVideo.onerror = function(){ if(!confirmado) tentarAudio(url); };
 }
 
 function tentarAudio(url){
@@ -316,10 +271,7 @@ function tentarAudio(url){
         atualizarStatus(true);
     };
 
-    mediaAudio.onerror = function(){
-        if(confirmado) return;
-        tentarImagem(url);
-    };
+    mediaAudio.onerror = function(){ if(!confirmado) tentarImagem(url); };
 }
 
 function tentarImagem(url){
@@ -346,95 +298,26 @@ function esconderTodos(){
 function mostrarVideo(){ esconderTodos(); mediaVideo.style.display = "block"; }
 function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
 
-function iniciarVideo(){
+function iniciarVideo(tempoInicial){
+    if(tempoInicial && !tempoInicialAjustado){
+        try { mediaVideo.currentTime = Number(tempoInicial); } catch(e){}
+        tempoInicialAjustado = true;
+    }
+
     var tentativa = mediaVideo.play();
     if(tentativa !== undefined){
         tentativa.then(function(){ 
             atualizarStatus(true);
         }).catch(function(){ 
-            setTimeout(iniciarVideo, 400); 
+            setTimeout(function(){ iniciarVideo(tempoInicial); }, 500); 
         });
     }
 }
 
 mediaVideo.onplaying = function() { atualizarStatus(true); };
 mediaVideo.onpause = function() { atualizarStatus(false); };
-mediaAudio.onplaying = function() { atualizarStatus(true); };
-mediaAudio.onpause = function() { atualizarStatus(false); };
 
-// =====================================
-// SUPORTE EXTENDIDO MULTILASER / ANDROID TV
-// =====================================
-var keyTimer = null;
-var isLongPress = false;
-
-function isChannelUp(code) {
-    return code === 166 || code === 427 || code === 33 || code === 38 || code === 1049;
-}
-
-function isChannelDown(code) {
-    return code === 167 || code === 428 || code === 34 || code === 40 || code === 1050;
-}
-
-function mostrarDebugTecla(code) {
-    if (!keyDebug) return;
-    keyDebug.innerText = "TECLA PRESSIONADA: " + code;
-    keyDebug.style.display = "block";
-
-    clearTimeout(debugTimeout);
-    debugTimeout = setTimeout(function() {
-        keyDebug.style.display = "none";
-    }, 3000);
-}
-
-window.addEventListener("keydown", function(event) {
-    var key = event.keyCode || event.which;
-
-    mostrarDebugTecla(key);
-
-    if (!isChannelUp(key) && !isChannelDown(key)) return;
-
-    event.preventDefault();
-
-    if (keyTimer) return;
-
-    isLongPress = false;
-
-    keyTimer = setTimeout(function() {
-        isLongPress = true;
-
-        if (tipoAtual === "video") {
-            if (isChannelUp(key)) {
-                mediaVideo.currentTime = Math.min(mediaVideo.duration, mediaVideo.currentTime + 900);
-            } else if (isChannelDown(key)) {
-                mediaVideo.currentTime = Math.max(0, mediaVideo.currentTime - 900);
-            }
-        }
-    }, 400);
-});
-
-window.addEventListener("keyup", function(event) {
-    var key = event.keyCode || event.which;
-
-    if (!isChannelUp(key) && !isChannelDown(key)) return;
-
-    clearTimeout(keyTimer);
-    keyTimer = null;
-
-    if (!isLongPress) {
-        if (isChannelUp(key)) {
-            enviarComando("next");
-        } else if (isChannelDown(key)) {
-            enviarComando("prev");
-        }
-    }
-
-    isLongPress = false;
-});
-
-// =====================================
-// MOTOR DE HTTP POLLING / LIVE CLOCK
-// =====================================
+// MOTOR DE POLLING LEVE PARA SMART TV
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
     xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
@@ -444,7 +327,6 @@ function verificarServidor(){
             if(xhr.status === 200){
                 try{
                     var dados = JSON.parse(xhr.responseText);
-                    dadosServidor = dados;
 
                     var url = "";
                     if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
@@ -452,12 +334,13 @@ function verificarServidor(){
                     }
                     if(!url && dados.video){ url = dados.video; }
 
+                    // Troca de mídia
                     if((dados.ativo || dados.playing !== false) && url){
                         if(url !== ultimaURL){
                             ultimaURL = url;
-                            receberMidia(url);
+                            receberMidia(url, dados.currentTime || 0);
                         }
-                    } else if (!dados.ativo && !dados.playing && (!dados.video && (!dados.fila || dados.fila.length === 0))) {
+                    } else if (!dados.ativo && !dados.playing && !dados.video) {
                         if(urlAtual !== ""){
                             urlAtual = ""; 
                             ultimaURL = "";
@@ -467,46 +350,23 @@ function verificarServidor(){
                         }
                     }
 
-                    // CONTROLE DE MÍDIA E SINCRONIZAÇÃO DA LIVE
+                    // Controle simples de Play/Pause e Mute/Volume (Sem mexer no currentTime!)
                     if(tipoAtual === "video" && mediaVideo){
                         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
-                        // 1. Controle Play / Pause
                         if(isPlaying === false && !mediaVideo.paused){
                             mediaVideo.pause();
                         } else if(isPlaying === true && mediaVideo.paused){
                             mediaVideo.play().catch(function(){});
                         }
 
-                        // 2. Volume e Mudo
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
-                        // 3. Sincronização Mestre de Tempo
-                        var tempoBase = (dados.currentTime !== undefined) ? dados.currentTime : dados.position;
-                        if(tempoBase !== undefined){
-                            var tempoAlvo = Number(tempoBase);
-
-                            if(isPlaying && dados.updatedAt){
-                                var decorrido = (Date.now() - dados.updatedAt) / 1000;
-                                tempoAlvo += decorrido;
-                            }
-
-                            // Tolera até 5.0 segundos de oscilação antes de forçar o buffer da Smart TV
-                            if(mediaVideo.readyState >= 2 && Math.abs(mediaVideo.currentTime - tempoAlvo) > 5.0){
-                                try {
-                                    mediaVideo.currentTime = Math.max(0, tempoAlvo);
-                                } catch(e){}
-                            }
-                        }
-
-                        // 4. Seek relativo legado
+                        // Ajuste manual APENAS se houver um salto manual deliberado do controle (ex: Seek)
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
-                            if(novoTempo < 0) novoTempo = 0;
-                            if(novoTempo > mediaVideo.duration) novoTempo = mediaVideo.duration;
-
-                            mediaVideo.currentTime = novoTempo;
+                            mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
                             enviarComando("zerar_seek");
                         }
                     }
@@ -515,16 +375,16 @@ function verificarServidor(){
                 atualizarStatus(false);
             }
 
-            // Intervalo suave de 1 segundo (1000ms) para não travar o buffer da TV
+            // Intervalo otimizado de 3 segundos para economizar CPU da Smart TV
             clearTimeout(pollTimeout);
-            pollTimeout = setTimeout(verificarServidor, 1000);
+            pollTimeout = setTimeout(verificarServidor, 3000);
         }
     };
 
     xhr.onerror = function() { 
         atualizarStatus(false);
         clearTimeout(pollTimeout);
-        pollTimeout = setTimeout(verificarServidor, 2000); 
+        pollTimeout = setTimeout(verificarServidor, 3000); 
     };
     xhr.send();
 }
@@ -539,16 +399,6 @@ function enviarComando(acao){
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.send(JSON.stringify({ acao: acao }));
 }
-
-function recuperarPlayer(){ if(urlAtual){ receberMidia(urlAtual); } }
-mediaVideo.onerror = function(){ 
-    atualizarStatus(false);
-    setTimeout(recuperarPlayer, 1500); 
-};
-mediaAudio.onerror = function(){ 
-    atualizarStatus(false);
-    setTimeout(recuperarPlayer, 1500); 
-};
 </script>
 
 </body>
