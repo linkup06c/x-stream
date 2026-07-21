@@ -214,16 +214,23 @@ app.post('/controle', (req, res) => {
         break;
 
       case 'seek_forward':
+        // Atualiza o currentTime oficial somando 15 segundos
+        masterState.currentTime = getCurrentPosition() + 15;
+        masterState.updatedAt = Date.now(); // Reseta a contagem de tempo a partir de agora
         masterState.seek = 15;
         break;
 
       case 'seek_backward':
+        // Atualiza o currentTime oficial subtraindo 15 segundos (não deixando baixar de 0)
+        masterState.currentTime = Math.max(0, getCurrentPosition() - 15);
+        masterState.updatedAt = Date.now(); // Reseta a contagem de tempo a partir de agora
         masterState.seek = -15;
         break;
 
       case 'seek_reset':
         masterState.seek = 0;
         break;
+
 
       case 'next_track':
         if (masterState.fila && masterState.fila.length > 0) {
