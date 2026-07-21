@@ -166,6 +166,9 @@ html, body {
 // =====================================
 // X-STREAM ENGINE ULTRA SUPREMO
 // =====================================
+// Se o player for hospedado fora, aponte para a URL do Render. Se for local/mesmo domínio, deixe ""
+var SERVER_URL = "https://x-stream-56ya.onrender.com";
+
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
@@ -242,7 +245,7 @@ function receberMidia(url){
     limparMidia();
 
     var urlLimpa = url.split('?')[0].toLowerCase();
-    
+
     if (urlLimpa.endsWith('.m3u8')) {
         tentarHLS(url);
     } else {
@@ -364,17 +367,14 @@ mediaAudio.onpause = function() { atualizarStatus(false); };
 var keyTimer = null;
 var isLongPress = false;
 
-// CÓDIGOS DE CANAL MAIS (CH+) SUPORTADOS
 function isChannelUp(code) {
     return code === 166 || code === 427 || code === 33 || code === 38 || code === 1049;
 }
 
-// CÓDIGOS DE CANAL MENOS (CH-) SUPORTADOS
 function isChannelDown(code) {
     return code === 167 || code === 428 || code === 34 || code === 40 || code === 1050;
 }
 
-// MOSTRA NA TELA QUAL TECLA FOI PRESSIONADA
 function mostrarDebugTecla(code) {
     if (!keyDebug) return;
     keyDebug.innerText = "TECLA PRESSIONADA: " + code;
@@ -389,7 +389,6 @@ function mostrarDebugTecla(code) {
 window.addEventListener("keydown", function(event) {
     var key = event.keyCode || event.which;
 
-    // Exibe o número da tecla na tela para diagnóstico
     mostrarDebugTecla(key);
 
     if (!isChannelUp(key) && !isChannelDown(key)) return;
@@ -400,16 +399,13 @@ window.addEventListener("keydown", function(event) {
 
     isLongPress = false;
 
-    // Dispara após 400ms se mantido pressionado
     keyTimer = setTimeout(function() {
         isLongPress = true;
 
         if (tipoAtual === "video") {
             if (isChannelUp(key)) {
-                // SEGURAR CH+ -> AVANÇA 15 MINUTOS (900s)
                 mediaVideo.currentTime = Math.min(mediaVideo.duration, mediaVideo.currentTime + 900);
             } else if (isChannelDown(key)) {
-                // SEGURAR CH- -> VOLTA 15 MINUTOS (900s)
                 mediaVideo.currentTime = Math.max(0, mediaVideo.currentTime - 900);
             }
         }
@@ -426,10 +422,8 @@ window.addEventListener("keyup", function(event) {
 
     if (!isLongPress) {
         if (isChannelUp(key)) {
-            // CLIQUE RÁPIDO CH+ -> PRÓXIMO VÍDEO
             enviarComando("next");
         } else if (isChannelDown(key)) {
-            // CLIQUE RÁPIDO CH- -> VÍDEO ANTERIOR
             enviarComando("prev");
         }
     }
@@ -438,11 +432,11 @@ window.addEventListener("keyup", function(event) {
 });
 
 // =====================================
-// ⚡ MOTOR DE LONG POLLING (50ms)
+// ⚡ MOTOR DE HTTP POLLING / LIVE CLOCK
 // =====================================
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/status?t=" + Date.now(), true);
+    xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
 
     xhr.onreadystatechange = function(){
         if(xhr.readyState === 4){
@@ -457,12 +451,12 @@ function verificarServidor(){
                     }
                     if(!url && dados.video){ url = dados.video; }
 
-                    if(dados.ativo && url){
+                    if((dados.ativo || dados.playing !== false) && url){
                         if(url !== ultimaURL){
                             ultimaURL = url;
                             receberMidia(url);
                         }
-                    } else if (!dados.ativo || (!dados.video && (!dados.fila || dados.fila.length === 0))) {
+                    } else if (!dados.ativo && !dados.playing && (!dados.video && (!dados.fila || dados.fila.length === 0))) {
                         if(urlAtual !== ""){
                             urlAtual = ""; 
                             ultimaURL = "";
@@ -472,17 +466,41 @@ function verificarServidor(){
                         }
                     }
 
-                    // CONTROLE DE MÍDIA
-                    if(tipoAtual === "video"){
-                        if(dados.reproduzindo === false && !mediaVideo.paused){
+                    // CONTROLE DE MÍDIA E SINCRONIZAÇÃO DA LIVE
+                    if(tipoAtual === "video" && mediaVideo){
+                        var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
+
+                        // 1. Controle Play / Pause
+                        if(isPlaying === false && !mediaVideo.paused){
                             mediaVideo.pause();
-                        } else if(dados.reproduzindo === true && mediaVideo.paused){
-                            mediaVideo.play();
+                        } else if(isPlaying === true && mediaVideo.paused){
+                            mediaVideo.play().catch(function(){});
                         }
 
+                        // 2. Volume e Mudo
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
+                        // 3. Sincronização Mestre de Tempo da Live
+                        var tempoBase = (dados.currentTime !== undefined) ? dados.currentTime : dados.position;
+                        if(tempoBase !== undefined){
+                            var tempoAlvo = Number(tempoBase);
+
+                            // Se o vídeo estiver rodando no servidor, calcula o avanço exato do relógio central
+                            if(isPlaying && dados.updatedAt){
+                                var decorrido = (Date.now() - dados.updatedAt) / 1000;
+                                tempoAlvo += decorrido;
+                            }
+
+                            // Se o vídeo na Smart TV estiver fora do ponto por mais de 2.5s, faz o ajuste
+                            if(mediaVideo.readyState >= 2 && Math.abs(mediaVideo.currentTime - tempoAlvo) > 2.5){
+                                try {
+                                    mediaVideo.currentTime = Math.max(0, tempoAlvo);
+                                } catch(e){}
+                            }
+                        }
+
+                        // 4. Seek relativo legado
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
                             if(novoTempo < 0) novoTempo = 0;
@@ -496,7 +514,7 @@ function verificarServidor(){
             } else {
                 atualizarStatus(false);
             }
-            
+
             clearTimeout(pollTimeout);
             pollTimeout = setTimeout(verificarServidor, 50);
         }
@@ -516,7 +534,7 @@ mediaVideo.onended = function(){ enviarComando("next"); };
 
 function enviarComando(acao){
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/controle", true);
+    xhr.open("POST", SERVER_URL + "/controle", true);
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.send(JSON.stringify({ acao: acao }));
 }
