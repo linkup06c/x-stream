@@ -355,6 +355,7 @@ function processarEstadoServidor(dados) {
     if((dados.ativo || dados.playing !== false) && url){
         if(url !== ultimaURL){
             ultimaURL = url;
+            urlAtual = url; // Garante alinhamento com a nova rota de controle/fila
             receberMidia(url, dados.currentTime || 0);
         }
     } else if (!dados.ativo && !dados.playing && !dados.video) {
@@ -380,11 +381,11 @@ function processarEstadoServidor(dados) {
         if(dados.volume !== undefined){ midiaAtiva.volume = dados.volume / 100; }
         if(dados.mudo !== undefined){ midiaAtiva.muted = dados.mudo; }
 
+        // AJUSTADO: Sincronização limpa com o seek protegido do backend (evita loops duplos)
         if(dados.seek && dados.seek !== 0 && dados.comandoId !== ultimoComandoIdProcessado){
             ultimoComandoIdProcessado = dados.comandoId;
             var novoTempo = midiaAtiva.currentTime + dados.seek;
             midiaAtiva.currentTime = Math.max(0, Math.min(novoTempo, midiaAtiva.duration || 0));
-            enviarComando("seek_reset");
         }
     }
 
@@ -400,7 +401,7 @@ function processarEstadoServidor(dados) {
 function iniciarWebSocket() {
     try {
         wsConnection = new WebSocket(WS_URL);
-        
+
         wsConnection.onopen = function() {
             clearInterval(pingInterval);
             pingInterval = setInterval(function(){
@@ -470,7 +471,7 @@ window.addEventListener("keydown", function(e) {
         case 27:    // Esc
         case 10009: // Sraf/Tizen Back
         case 461:   // LG Back
-            acao = "stop";
+            acao = "stop"; // Interliga perfeitamente com a limpeza de fila/parada total do servidor
             limparMidia();
             esconderTodos();
             break;
