@@ -27,7 +27,7 @@ let masterState = {
   seek: 0,
   ultimoComando: null,
   comandoId: 0,
-  fila: [],             // Lista de mídias [{ url: '...' }]
+  fila: [],             // Lista de mídias [{ url: '...', titulo: '...' }]
   atual: 0
 };
 
@@ -58,7 +58,9 @@ function broadcastState(acaoExtra = null) {
   });
 }
 
-// Rota HTTP Polling usada pela Smart TV
+// ==========================================
+// ROTA DE POLLING E ENVIO BÁSICO (MANTIDOS)
+// ==========================================
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
   res.json({
@@ -71,11 +73,10 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Envio de nova mídia com Fila em Sequência
 app.post('/enviar', (req, res) => {
-  const url = req.body.url;
+  const { url, titulo } = req.body;
   if (url) {
-    masterState.fila.push({ url: url });
+    masterState.fila.push({ url: url, titulo: titulo || "Sem título" });
 
     // Se nada estiver tocando, inicia imediatamente a nova mídia
     if (!masterState.video || !masterState.ativo) {
@@ -92,13 +93,77 @@ app.post('/enviar', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// Recepção de comandos do Controle Remoto com TODAS as funções
+// ==========================================
+// NOVAS ROTAS PARA GERENCIAMENTO TOTAL (API)
+// ==========================================
+
+// Obter estado atual completo do servidor
+app.get('/api/estado', (req, res) => {
+  res.json({ ...masterState, currentTime: getCurrentPosition() });
+});
+
+// Definir/Substituir a Fila completa (Array de URLs)
+app.post('/api/fila', (req, res) => {
+  const { fila, indice } = req.body;
+  if (Array.isArray(fila)) {
+    masterState.fila = fila;
+    masterState.atual = indice !== undefined ? Number(indice) : 0;
+    
+    if (masterState.fila.length > 0) {
+      masterState.video = masterState.fila[masterState.atual].url;
+      masterState.ativo = true;
+      masterState.playing = true;
+      masterState.reproduzindo = true;
+      masterState.currentTime = 0;
+      masterState.updatedAt = Date.now();
+    }
+    broadcastState("set_queue");
+    return res.json({ success: true, masterState });
+  }
+  res.status(400).json({ success: false, erro: "Formato inválido. Envie um array." });
+});
+
+// Limpar a fila e resetar o player instantaneamente
+app.delete('/api/fila', (req, res) => {
+  masterState.fila = [];
+  masterState.atual = 0;
+  masterState.video = null;
+  masterState.ativo = false;
+  masterState.playing = false;
+  masterState.reproduzindo = false;
+  masterState.currentTime = 0;
+  masterState.updatedAt = Date.now();
+  broadcastState("clear_queue");
+  res.json({ success: true, mensagem: "Fila limpa com sucesso!" });
+});
+
+// Forçar reprodução direta (ignora a fila momentaneamente)
+app.post('/api/tocar', (req, res) => {
+  const { url } = req.body;
+  if (url) {
+    masterState.video = url;
+    masterState.ativo = true;
+    masterState.playing = true;
+    masterState.reproduzindo = true;
+    masterState.currentTime = 0;
+    masterState.updatedAt = Date.now();
+    broadcastState("direct_play");
+    return res.json({ success: true, url });
+  }
+  res.status(400).json({ success: false, erro: "URL não informada" });
+});
+
+// ==========================================
+// RECPÇÃO DE COMANDOS DO CONTROLE
+// ==========================================
 app.post('/controle', (req, res) => {
   const acao = req.body.acao;
 
   if (acao) {
+    // PREVENÇÃO DE LOOP: Limpa o seek anterior antes de processar nova ação
+    masterState.seek = 0; 
+
     switch (acao) {
-      // Alterna entre play e pause (ideal para um único botão no controle)
       case 'toggle_play':
         if (!masterState.video) break;
         masterState.playing = !masterState.playing;
@@ -109,7 +174,6 @@ app.post('/controle', (req, res) => {
         masterState.updatedAt = Date.now();
         break;
 
-      // Força o Play
       case 'play':
         if (!masterState.video || masterState.playing) break;
         masterState.playing = true;
@@ -117,7 +181,6 @@ app.post('/controle', (req, res) => {
         masterState.updatedAt = Date.now();
         break;
 
-      // Força o Pause
       case 'pause':
         if (!masterState.playing) break;
         masterState.currentTime = getCurrentPosition();
@@ -126,8 +189,8 @@ app.post('/controle', (req, res) => {
         masterState.updatedAt = Date.now();
         break;
 
-      // Para totalmente a reprodução e limpa a fila (Antigo 'power'/'clear')
       case 'stop':
+      case 'clear_queue':
         masterState.video = null;
         masterState.ativo = false;
         masterState.playing = false;
@@ -150,7 +213,6 @@ app.post('/controle', (req, res) => {
         masterState.volume = Math.max(0, masterState.volume - 10);
         break;
 
-      // Avançar e Voltar tempo específico
       case 'seek_forward':
         masterState.seek = 15;
         break;
@@ -163,14 +225,9 @@ app.post('/controle', (req, res) => {
         masterState.seek = 0;
         break;
 
-      // Navegação na Fila
       case 'next_track':
         if (masterState.fila && masterState.fila.length > 0) {
-          if (masterState.atual < masterState.fila.length - 1) {
-            masterState.atual++;
-          } else {
-            masterState.atual = 0; // Volta para o início do ciclo
-          }
+          masterState.atual = (masterState.atual < masterState.fila.length - 1) ? masterState.atual + 1 : 0;
           masterState.video = masterState.fila[masterState.atual].url;
           masterState.currentTime = 0;
           masterState.playing = true;
@@ -181,11 +238,7 @@ app.post('/controle', (req, res) => {
 
       case 'prev_track':
         if (masterState.fila && masterState.fila.length > 0) {
-          if (masterState.atual > 0) {
-            masterState.atual--;
-          } else {
-            masterState.atual = masterState.fila.length - 1; // Vai para o último
-          }
+          masterState.atual = (masterState.atual > 0) ? masterState.atual - 1 : masterState.fila.length - 1;
           masterState.video = masterState.fila[masterState.atual].url;
           masterState.currentTime = 0;
           masterState.playing = true;
@@ -194,7 +247,6 @@ app.post('/controle', (req, res) => {
         }
         break;
 
-      // Comandos Navegacionais de Interface (D-PAD / Teclado Smart TV)
       case 'up':
       case 'down':
       case 'left':
@@ -202,7 +254,7 @@ app.post('/controle', (req, res) => {
       case 'ok':
       case 'back':
       case 'home':
-        // Comandos repassados via broadcast/polling para a interface do Player
+        // Repassa direto via broadcast
         break;
     }
 
@@ -214,7 +266,9 @@ app.post('/controle', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// WebSocket para conexões secundárias
+// ==========================================
+// WEBSOCKET E ROTAS ESTÁTICAS
+// ==========================================
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
