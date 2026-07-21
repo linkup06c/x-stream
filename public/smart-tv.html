@@ -1,24 +1,23 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>X-Stream Engine Ultra Supremo</title>
+<title>X-Stream Engine Ultra Supremo V3</title>
 
-<!-- SUPORTE A STREAMING HLS (M3U8 / LIVES / IPTV) -->
+<!-- BIBLIOTECAS DE SUPORTE A STREAMING UNIVERSAL (HLS & MPEG-DASH) -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
 
 <style>
-/* OTIMIZAÇÃO DE RENDERIZAÇÃO PARA SMART TV */
+/* OTIMIZAÇÃO ABSOLUTA DE GPU E RAM */
 html, body {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
     background: #000;
     overflow: hidden;
-    font-family: Arial, Helvetica, sans-serif;
-    color: white;
-    touch-action: none;
+    font-family: Arial, sans-serif;
+    color: #fff;
     -webkit-user-select: none;
     user-select: none;
 }
@@ -29,8 +28,7 @@ html, body {
     background: #000; 
     object-fit: contain;
     display: none; 
-    /* Aceleração de Hardware forçada (GPU) */
-    transform: translateZ(0); 
+    transform: translateZ(0);
     will-change: transform;
     backface-visibility: hidden;
 }
@@ -39,45 +37,26 @@ html, body {
 #mediaImage { z-index: 15; }
 #mediaAudio { display: none; }
 
-/* INDICADOR DISCRETO LIVE / OFFLINE OTIMIZADO */
+/* INDICADOR DISCRETO LEVE */
 #statusBadge {
-    position: fixed;
-    top: 25px;
-    left: 25px;
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 6px 14px;
-    border-radius: 20px;
-    transition: opacity 0.3s ease; /* Removido animacoes pesadas */
+    position: fixed; top: 20px; left: 20px;
+    z-index: 9999; display: flex; align-items: center; gap: 8px;
+    background: rgba(0, 0, 0, 0.7); padding: 5px 12px;
+    border-radius: 15px;
 }
 
-.dot {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-}
-
-.statusText {
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
-}
+.dot { width: 9px; height: 9px; border-radius: 50%; }
+.statusText { font-size: 10px; font-weight: bold; text-transform: uppercase; }
 
 #statusBadge.offline .dot { background: #ff3333; }
 #statusBadge.live .dot { background: #00ff66; }
 
-/* Feedback de tecla pressionada na TV */
+/* FEEDBACK VISUAL INSTANTÂNEO DE COMANDOS */
 #keyDebug {
-    position: fixed; top: 25px; right: 25px;
-    background: rgba(255, 107, 0, 0.8);
-    color: white; padding: 10px 20px;
-    border-radius: 10px; font-weight: bold;
-    z-index: 10000; display: none;
-    font-size: 14px;
+    position: fixed; top: 20px; right: 20px;
+    background: rgba(255, 107, 0, 0.9); color: white;
+    padding: 8px 16px; border-radius: 8px; font-weight: bold;
+    z-index: 10000; display: none; font-size: 13px;
 }
 
 #errorBox {
@@ -86,15 +65,13 @@ html, body {
     display: none; align-items: center; justify-content: center;
     flex-direction: column; text-align: center; z-index: 20000;
 }
-
-#errorTitle { font-size: 40px; color: #ff3333; margin-bottom: 20px; }
-#errorMessage { font-size: 22px; max-width: 80%; color: #ccc; }
+#errorTitle { font-size: 35px; color: #ff3333; margin-bottom: 15px; }
+#errorMessage { font-size: 18px; max-width: 80%; color: #aaa; }
 </style>
 </head>
 
 <body>
 
-<!-- Feedback de Controle Remoto -->
 <div id="keyDebug"></div>
 
 <div id="statusBadge" class="offline">
@@ -107,17 +84,15 @@ html, body {
 <img id="mediaImage">
 
 <div id="errorBox">
-    <div id="errorTitle">Erro</div>
-    <div id="errorMessage">Não foi possível reproduzir este formato.</div>
+    <div id="errorTitle">Aviso de Mídia</div>
+    <div id="errorMessage">Formato indisponível ou stream offline.</div>
 </div>
 
 <script>
-// Mantendo compatibilidade com JavaScript ES5 (Sraf Browser Antigo)
+// CONFIGURAÇÃO DE ENDEREÇOS
 var SERVER_URL = (window.location.origin && window.location.origin.startsWith("http"))
     ? window.location.origin 
     : "https://x-stream-56ya.onrender.com";
-
-// Deriva a URL do WebSocket automaticamente
 var WS_URL = SERVER_URL.replace("http://", "ws://").replace("https://", "wss://");
 
 var mediaVideo = document.getElementById("mediaVideo");
@@ -130,18 +105,18 @@ var keyDebug = document.getElementById("keyDebug");
 var tipoAtual = "";
 var urlAtual = "";
 var ultimaURL = "";
-var pollTimeout = null;
 var hlsPlayer = null;
+var dashPlayer = null;
 var debugTimeout = null;
-var tempoInicialAjustado = false;
-var ultimoComandoIdProcessado = 0;
 var wsConnection = null;
+var ultimoComandoIdProcessado = 0;
+var pingInterval = null;
 
 function showDebug(msg) {
     keyDebug.innerText = msg;
     keyDebug.style.display = "block";
     clearTimeout(debugTimeout);
-    debugTimeout = setTimeout(function(){ keyDebug.style.display = "none"; }, 1500);
+    debugTimeout = setTimeout(function(){ keyDebug.style.display = "none"; }, 1200);
 }
 
 function atualizarStatus(isLive){
@@ -163,72 +138,118 @@ function mostrarErro(msg){
     }
 }
 
+// LIMPEZA PROFUNDA DE RAM E RECURSOS DE VÍDEO
 function limparMidia(){
     atualizarStatus(false);
-    tempoInicialAjustado = false;
 
+    // Destrói HLS liberando buffers de memória
     if (hlsPlayer) {
-        try { hlsPlayer.destroy(); hlsPlayer = null; } catch(e){}
+        try { hlsPlayer.destroy(); } catch(e){}
+        hlsPlayer = null;
     }
-    try { mediaVideo.pause(); mediaVideo.removeAttribute("src"); mediaVideo.load(); } catch(e){}
-    try { mediaAudio.pause(); mediaAudio.removeAttribute("src"); mediaAudio.load(); } catch(e){}
-    try { mediaImage.removeAttribute("src"); } catch(e){}
+
+    // Destrói DASH liberando buffers de memória
+    if (dashPlayer) {
+        try { dashPlayer.reset(); } catch(e){}
+        dashPlayer = null;
+    }
+
+    try {
+        mediaVideo.pause();
+        mediaVideo.removeAttribute("src");
+        mediaVideo.load();
+    } catch(e){}
+
+    try {
+        mediaAudio.pause();
+        mediaAudio.removeAttribute("src");
+        mediaAudio.load();
+    } catch(e){}
+
+    try {
+        mediaImage.removeAttribute("src");
+    } catch(e){}
 }
 
+// SELETOR DE PROTOCOLO INTELIGENTE (HLS, DASH ou MP4)
 function receberMidia(url, tempoInicial){
     if(!url || url === urlAtual) return;
     urlAtual = url;
     limparMidia();
 
     var urlLimpa = url.split('?')[0].toLowerCase();
+
     if (urlLimpa.endsWith('.m3u8')) {
-        tentarHLS(url, tempoInicial);
+        iniciarHLS(url, tempoInicial);
+    } else if (urlLimpa.endsWith('.mpd')) {
+        iniciarDASH(url, tempoInicial);
     } else {
-        tentarVideo(url, tempoInicial);
+        iniciarVideoPadrao(url, tempoInicial);
     }
 }
 
-function tentarHLS(url, tempoInicial) {
+function iniciarHLS(url, tempoInicial) {
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
         hlsPlayer = new Hls({
-            enableWorker: false, // Worker pode causar lentidao em TVs antigas
-            maxBufferLength: 10,
-            maxMaxBufferLength: 20,
-            lowLatencyMode: false
+            enableWorker: false, // Desligado para proteger CPUs fracas de TV
+            maxBufferLength: 8,
+            maxMaxBufferLength: 15,
+            liveSyncDurationCount: 3,
+            lowLatencyMode: true
         });
         hlsPlayer.loadSource(url);
         hlsPlayer.attachMedia(mediaVideo);
         hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
             tipoAtual = "video";
             mostrarVideo();
-            iniciarVideo(tempoInicial);
+            executarPlayComTempo(tempoInicial);
         });
         hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) { tentarVideo(url, tempoInicial); }
+            if (data.fatal) { iniciarVideoPadrao(url, tempoInicial); }
         });
     } else if (mediaVideo.canPlayType('application/vnd.apple.mpegurl')) {
         mediaVideo.src = url;
-        tentarVideo(url, tempoInicial);
+        iniciarVideoPadrao(url, tempoInicial);
     } else {
-        tentarVideo(url, tempoInicial);
+        iniciarVideoPadrao(url, tempoInicial);
     }
 }
 
-function tentarVideo(url, tempoInicial){
+function iniciarDASH(url, tempoInicial) {
+    if (typeof dashjs !== 'undefined') {
+        try {
+            dashPlayer = dashjs.MediaPlayer().create();
+            dashPlayer.initialize(mediaVideo, url, true);
+            tipoAtual = "video";
+            mostrarVideo();
+            if(tempoInicial > 0) mediaVideo.currentTime = Number(tempoInicial);
+            atualizarStatus(true);
+        } catch(e) {
+            iniciarVideoPadrao(url, tempoInicial);
+        }
+    } else {
+        iniciarVideoPadrao(url, tempoInicial);
+    }
+}
+
+function iniciarVideoPadrao(url, tempoInicial){
     var confirmado = false;
     mediaVideo.src = url;
     mediaVideo.load();
 
-    function ativarVideo(){
+    function ativar(){
         if(confirmado) return;
         confirmado = true;
         tipoAtual = "video";
         mostrarVideo();
-        iniciarVideo(tempoInicial);
+        executarPlayComTempo(tempoInicial);
     }
-    mediaVideo.onloadeddata = ativarVideo;
-    mediaVideo.oncanplay = ativarVideo;
-    mediaVideo.onerror = function(){ if(!confirmado) tentarAudio(url); };
+
+    mediaVideo.onloadeddata = ativar;
+    mediaVideo.oncanplay = ativar;
+    mediaVideo.onerror = function(){
+        if(!confirmado) tentarAudio(url);
+    };
 }
 
 function tentarAudio(url){
@@ -237,25 +258,27 @@ function tentarAudio(url){
     mediaAudio.load();
     mediaAudio.oncanplay = function(){
         if(confirmado) return;
-        confirmado = true; 
+        confirmado = true;
         tipoAtual = "audio";
         mediaAudio.play();
         atualizarStatus(true);
     };
-    mediaAudio.onerror = function(){ if(!confirmado) tentarImagem(url); };
+    mediaAudio.onerror = function(){
+        if(!confirmado) tentarImagem(url);
+    };
 }
 
 function tentarImagem(url){
     var img = new Image();
     img.onload = function(){
-        tipoAtual = "image"; 
+        tipoAtual = "image";
         mediaImage.src = url;
-        mostrarImagem(); 
+        mostrarImagem();
         atualizarStatus(true);
     };
-    img.onerror = function(){ 
+    img.onerror = function(){
         atualizarStatus(false);
-        mostrarErro("Formato ou link não suportado"); 
+        mostrarErro("Formato de mídia não suportado.");
     };
     img.src = url;
 }
@@ -271,31 +294,27 @@ function esconderTodos(){
 function mostrarVideo(){ esconderTodos(); mediaVideo.style.display = "block"; }
 function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
 
-function iniciarVideo(tempoInicial){
-    if(tempoInicial && !tempoInicialAjustado){
+function executarPlayComTempo(tempoInicial){
+    if(tempoInicial && tempoInicial > 0){
         try { mediaVideo.currentTime = Number(tempoInicial); } catch(e){}
-        tempoInicialAjustado = true;
     }
-    var tentativa = mediaVideo.play();
-    if(tentativa !== undefined){
-        tentativa.then(function(){ 
+    var p = mediaVideo.play();
+    if(p !== undefined){
+        p.then(function(){
             atualizarStatus(true);
-        }).catch(function(){ 
-            setTimeout(function(){ iniciarVideo(tempoInicial); }, 500); 
+        }).catch(function(){
+            setTimeout(function(){ executarPlayComTempo(tempoInicial); }, 400);
         });
     }
 }
 
 mediaVideo.onplaying = function() { atualizarStatus(true); };
 mediaVideo.onpause = function() { atualizarStatus(false); };
-
-// Quando o vídeo termina, dispara o avanço automático da fila (NOVO COMANDO)
 mediaVideo.onended = function(){ enviarComando("next_track"); };
 
 // ==========================================
-// NÚCLEO DE COMUNICAÇÃO: WEBSOCKET + POLLING
+// PROCESSAMENTO DO ESTADO DO SERVIDOR
 // ==========================================
-
 function processarEstadoServidor(dados) {
     var url = "";
     if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
@@ -303,7 +322,6 @@ function processarEstadoServidor(dados) {
     }
     if(!url && dados.video){ url = dados.video; }
 
-    // Troca de mídia
     if((dados.ativo || dados.playing !== false) && url){
         if(url !== ultimaURL){
             ultimaURL = url;
@@ -313,13 +331,12 @@ function processarEstadoServidor(dados) {
         if(urlAtual !== ""){
             urlAtual = ""; 
             ultimaURL = "";
-            limparMidia(); 
-            esconderTodos(); 
+            limparMidia();
+            esconderTodos();
             atualizarStatus(false);
         }
     }
 
-    // Controle de Play/Pause, Mute/Volume
     if(tipoAtual === "video" && mediaVideo){
         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
@@ -332,78 +349,54 @@ function processarEstadoServidor(dados) {
         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
-        // Execução de salto de seek adaptado para os novos comandos
         if(dados.seek && dados.seek !== 0 && dados.comandoId !== ultimoComandoIdProcessado){
             ultimoComandoIdProcessado = dados.comandoId;
             var novoTempo = mediaVideo.currentTime + dados.seek;
             mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
-            enviarComando("seek_reset"); // Antigo zerar_seek
+            enviarComando("seek_reset");
         }
     }
 
-    // Feedback remoto no Celular
     if(dados.ultimoComando && dados.comandoId !== ultimoComandoIdProcessado){
         ultimoComandoIdProcessado = dados.comandoId;
-        showDebug("📱 CELULAR: " + dados.ultimoComando.toUpperCase());
+        showDebug("📱 " + dados.ultimoComando.toUpperCase());
     }
 }
 
-// 1. WebSocket (Modo Principal - Zero Engasgamento)
+// ==========================================
+// CONEXÃO WEBSOCKET BLINDADA COM HEARTBEAT
+// ==========================================
 function iniciarWebSocket() {
     try {
         wsConnection = new WebSocket(WS_URL);
+        
         wsConnection.onopen = function() {
-            console.log("WebSocket Conectado!");
+            // Envia um ping a cada 25s para manter a conexão ativa na TV
+            clearInterval(pingInterval);
+            pingInterval = setInterval(function(){
+                if(wsConnection && wsConnection.readyState === 1){
+                    wsConnection.send(JSON.stringify({ tipo: "sync-request" }));
+                }
+            }, 25000);
         };
+
         wsConnection.onmessage = function(event) {
             try {
                 var dados = JSON.parse(event.data);
                 processarEstadoServidor(dados);
             } catch(e){}
         };
+
         wsConnection.onclose = function() {
-            setTimeout(iniciarWebSocket, 5000); // Tenta reconectar
+            clearInterval(pingInterval);
+            setTimeout(iniciarWebSocket, 4000); // Reconexão automática rápida
         };
     } catch(e) {
-        console.log("WebSocket falhou, caindo para Polling.");
+        setTimeout(iniciarWebSocket, 4000);
     }
 }
 
-// 2. Polling (Fallback apenas se o WebSocket falhar ou demorar)
-function verificarServidorHTTP(){
-    if (wsConnection && wsConnection.readyState === 1) {
-        // Se o WebSocket estiver aberto, não roda o Polling (poupando CPU da TV)
-        pollTimeout = setTimeout(verificarServidorHTTP, 3000);
-        return;
-    }
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
-    xhr.onreadystatechange = function(){
-        if(xhr.readyState === 4){
-            if(xhr.status === 200){
-                try{
-                    var dados = JSON.parse(xhr.responseText);
-                    processarEstadoServidor(dados);
-                }catch(e){}
-            } else {
-                atualizarStatus(false);
-            }
-            clearTimeout(pollTimeout);
-            pollTimeout = setTimeout(verificarServidorHTTP, 3000);
-        }
-    };
-    xhr.onerror = function() { 
-        atualizarStatus(false);
-        clearTimeout(pollTimeout);
-        pollTimeout = setTimeout(verificarServidorHTTP, 3000); 
-    };
-    xhr.send();
-}
-
-// Inicializa as conexões
 iniciarWebSocket();
-verificarServidorHTTP();
 
 function enviarComando(acao){
     var xhr = new XMLHttpRequest();
@@ -413,51 +406,56 @@ function enviarComando(acao){
 }
 
 // ==========================================
-// CAPTURA DO CONTROLE REMOTO DA TV SRAF
+// CONTROLE REMOTO DA TV COM RESPOSTA INSTANTÂNEA
 // ==========================================
 document.addEventListener("keydown", function(e) {
     var key = e.keyCode || e.which;
-    var acaoDetectada = null;
+    var acao = null;
 
     switch(key) {
-        case 13:   // Botão OK / Enter
-            acaoDetectada = "toggle_play"; 
+        case 13:   // OK / Enter -> Alternar Play/Pause local imediato
+            acao = "toggle_play";
+            if(mediaVideo){
+                if(mediaVideo.paused) mediaVideo.play().catch(function(){});
+                else mediaVideo.pause();
+            }
             break;
-        case 37:   // Seta Esquerda
-            acaoDetectada = "seek_backward"; 
+        case 37:   // Seta Esquerda -> Recuar 15s instantâneo
+            acao = "seek_backward";
+            if(mediaVideo) mediaVideo.currentTime = Math.max(0, mediaVideo.currentTime - 15);
             break;
-        case 39:   // Seta Direita
-            acaoDetectada = "seek_forward"; 
+        case 39:   // Seta Direita -> Avançar 15s instantâneo
+            acao = "seek_forward";
+            if(mediaVideo) mediaVideo.currentTime = Math.min(mediaVideo.duration || 0, mediaVideo.currentTime + 15);
             break;
-        case 38:   // Seta Cima
-            acaoDetectada = "volume_up"; 
+        case 38:   // Seta Cima -> Volume Up
+            acao = "volume_up";
             break;
-        case 40:   // Seta Baixo
-            acaoDetectada = "volume_down"; 
+        case 40:   // Seta Baixo -> Volume Down
+            acao = "volume_down";
             break;
         case 8:     // Backspace
         case 27:    // Esc
-        case 10009: // Botão RETURN/BACK Típico do Sraf / Tizen
-        case 461:   // Botão BACK Típico LG
-            acaoDetectada = "stop"; 
+        case 10009: // Sraf/Tizen Back
+        case 461:   // LG Back
+            acao = "stop";
+            limparMidia();
+            esconderTodos();
             break;
-        case 427:  // Botão CH UP (Canal Cima)
-        case 33:   // Page Up
-            acaoDetectada = "next_track";
+        case 33:   // Page Up / CH+
+            acao = "next_track";
             break;
-        case 428:  // Botão CH DOWN (Canal Baixo)
-        case 34:   // Page Down
-            acaoDetectada = "prev_track";
+        case 34:   // Page Down / CH-
+            acao = "prev_track";
             break;
     }
 
-    if (acaoDetectada) {
-        e.preventDefault(); // Impede que a TV role a tela
-        showDebug("📺 TV: " + acaoDetectada.toUpperCase());
-        enviarComando(acaoDetectada);
+    if (acao) {
+        e.preventDefault();
+        showDebug("📺 " + acao.toUpperCase());
+        enviarComando(acao);
     }
 });
-
 </script>
 </body>
 </html>
