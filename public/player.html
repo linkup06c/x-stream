@@ -11,8 +11,7 @@
 
 <style>
 /* =====================================
-   X-STREAM ULTRA SUPREMO - TV ENGINE
-   ACELERADO VIA GPU + ZERO LATÊNCIA
+   X-STREAM ULTRA SUPREMO - MINIMALISTA
 ===================================== */
 html, body {
     margin: 0; padding: 0;
@@ -48,25 +47,50 @@ html, body {
     transform: translate3d(0, 0, 0);
 }
 
-#waiting {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: #000; display: flex;
-    align-items: center; justify-content: center;
-    flex-direction: column; font-size: 28px; z-index: 5000;
+/* 🟢🔴 INDICADOR DISCRETO LIVE / OFFLINE (CANTO SUPERIOR ESQUERDO) */
+#statusBadge {
+    position: fixed;
+    top: 25px;
+    left: 25px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    transition: all 0.3s ease;
 }
 
-.loader {
-    width: 60px; height: 60px; border-radius: 50%;
-    border: 6px solid #222; border-top-color: #00e5ff;
-    animation: spin 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; 
-    margin-bottom: 25px;
-    box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+/* ESTADO OFFLINE (Vermelho) */
+#statusBadge.offline .dot {
+    background: #ff3333;
+    box-shadow: 0 0 8px #ff3333;
+}
+#statusBadge.offline .statusText {
+    color: #ff4d4d;
+}
+
+/* ESTADO LIVE (Verde) */
+#statusBadge.live .dot {
+    background: #00ff66;
+    box-shadow: 0 0 10px #00ff66;
+}
+#statusBadge.live .statusText {
+    color: #00ff66;
 }
 
 #errorBox {
@@ -102,17 +126,18 @@ html, body {
 
 <div id="cursorLayer">Texto de teste invisível</div>
 
+<!-- EMBLEMA STATUS LIVE / OFFLINE -->
+<div id="statusBadge" class="offline">
+    <span class="dot"></span>
+    <span id="statusText" class="statusText">OFFLINE</span>
+</div>
+
 <video id="mediaVideo" autoplay playsinline webkit-playsinline preload="metadata" crossorigin="anonymous"></video>
 <audio id="mediaAudio" autoplay preload="metadata"></audio>
 <img id="mediaImage">
 
 <div id="audioInfo">
     <div id="audioTitle">Áudio</div>
-</div>
-
-<div id="waiting">
-    <div class="loader"></div>
-    <div>Aguardando transmissão...</div>
 </div>
 
 <div id="errorBox">
@@ -127,6 +152,8 @@ html, body {
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
+var statusBadge = document.getElementById("statusBadge");
+var statusText = document.getElementById("statusText");
 
 var tipoAtual = "";
 var urlAtual = "";
@@ -142,14 +169,15 @@ var hlsPlayer = null;
     }catch(e){}
 })();
 
-function esconderAguardando(){
-    var box = document.getElementById("waiting");
-    if(box && box.style.display !== "none") box.style.display = "none";
-}
-
-function mostrarAguardando(){
-    var box = document.getElementById("waiting");
-    if(box && box.style.display !== "flex") box.style.display = "flex";
+// GERENCIADOR DE STATUS (LIVE / OFFLINE)
+function atualizarStatus(isLive){
+    if(isLive){
+        statusBadge.className = "live";
+        statusText.innerHTML = "LIVE";
+    } else {
+        statusBadge.className = "offline";
+        statusText.innerHTML = "OFFLINE";
+    }
 }
 
 function mostrarErro(msg){
@@ -161,8 +189,10 @@ function mostrarErro(msg){
     }
 }
 
-// ⚡ GARBAGE COLLECTION PROFUNDO (Libera RAM instantaneamente)
+// ⚡ GARBAGE COLLECTION PROFUNDO
 function limparMidia(){
+    atualizarStatus(false);
+
     if (hlsPlayer) {
         try {
             hlsPlayer.destroy();
@@ -191,9 +221,7 @@ function receberMidia(url){
     if(!url || url === urlAtual) return;
     urlAtual = url;
     limparMidia();
-    mostrarAguardando();
 
-    // Deteção inteligente de formato
     var urlLimpa = url.split('?')[0].toLowerCase();
     
     if (urlLimpa.endsWith('.m3u8')) {
@@ -203,7 +231,6 @@ function receberMidia(url){
     }
 }
 
-// SUPORTE A HLS / M3U8 / LIVES / IPTV
 function tentarHLS(url) {
     if (Hls.isSupported()) {
         hlsPlayer = new Hls({
@@ -216,16 +243,14 @@ function tentarHLS(url) {
         hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
             tipoAtual = "video";
             mostrarVideo();
-            esconderAguardando();
             iniciarVideo();
         });
         hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
             if (data.fatal) {
-                tentarVideo(url); // Fallback se HLS falhar
+                tentarVideo(url);
             }
         });
     } else if (mediaVideo.canPlayType('application/vnd.apple.mpegurl')) {
-        // Suporte nativo para Safari/Webkit antigos
         mediaVideo.src = url;
         tentarVideo(url);
     } else {
@@ -243,7 +268,6 @@ function tentarVideo(url){
         confirmado = true;
         tipoAtual = "video";
         mostrarVideo();
-        esconderAguardando();
         iniciarVideo();
     }
 
@@ -265,8 +289,8 @@ function tentarAudio(url){
         if(confirmado) return;
         confirmado = true; 
         tipoAtual = "audio";
-        esconderAguardando(); 
         mediaAudio.play();
+        atualizarStatus(true);
     };
 
     mediaAudio.onerror = function(){
@@ -281,9 +305,12 @@ function tentarImagem(url){
         tipoAtual = "image"; 
         mediaImage.src = url;
         mostrarImagem(); 
-        esconderAguardando();
+        atualizarStatus(true);
     };
-    img.onerror = function(){ mostrarErro("Formato ou link não suportado"); };
+    img.onerror = function(){ 
+        atualizarStatus(false);
+        mostrarErro("Formato ou link não suportado"); 
+    };
     img.src = url;
 }
 
@@ -300,20 +327,20 @@ function iniciarVideo(){
     var tentativa = mediaVideo.play();
     if(tentativa !== undefined){
         tentativa.then(function(){ 
-            esconderAguardando(); 
+            atualizarStatus(true);
         }).catch(function(){ 
             setTimeout(iniciarVideo, 400); 
         });
     }
 }
 
-mediaVideo.onwaiting = function() { mostrarAguardando(); };
-mediaVideo.onplaying = function() { esconderAguardando(); };
-mediaVideo.onplay = function() { esconderAguardando(); };
-mediaAudio.onplaying = function() { esconderAguardando(); };
+mediaVideo.onplaying = function() { atualizarStatus(true); };
+mediaVideo.onpause = function() { atualizarStatus(false); };
+mediaAudio.onplaying = function() { atualizarStatus(true); };
+mediaAudio.onpause = function() { atualizarStatus(false); };
 
 // =====================================
-// ⚡ MOTOR DE LONG POLLING ULTRA-RESILIENTE (50ms)
+// ⚡ MOTOR DE LONG POLLING (50ms)
 // =====================================
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
@@ -343,11 +370,11 @@ function verificarServidor(){
                             ultimaURL = "";
                             limparMidia(); 
                             esconderTodos(); 
-                            mostrarAguardando();
+                            atualizarStatus(false);
                         }
                     }
 
-                    // CONTROLE DE MIDIA COM ALTA PRECISÃO
+                    // CONTROLE DE MÍDIA
                     if(tipoAtual === "video"){
                         if(dados.reproduzindo === false && !mediaVideo.paused){
                             mediaVideo.pause();
@@ -368,6 +395,8 @@ function verificarServidor(){
                         }
                     }
                 }catch(e){}
+            } else {
+                atualizarStatus(false);
             }
             
             clearTimeout(pollTimeout);
@@ -376,6 +405,7 @@ function verificarServidor(){
     };
 
     xhr.onerror = function() { 
+        atualizarStatus(false);
         clearTimeout(pollTimeout);
         pollTimeout = setTimeout(verificarServidor, 1000); 
     };
@@ -394,8 +424,14 @@ function enviarComando(acao){
 }
 
 function recuperarPlayer(){ if(urlAtual){ receberMidia(urlAtual); } }
-mediaVideo.onerror = function(){ setTimeout(recuperarPlayer, 1500); };
-mediaAudio.onerror = function(){ setTimeout(recuperarPlayer, 1500); };
+mediaVideo.onerror = function(){ 
+    atualizarStatus(false);
+    setTimeout(recuperarPlayer, 1500); 
+};
+mediaAudio.onerror = function(){ 
+    atualizarStatus(false);
+    setTimeout(recuperarPlayer, 1500); 
+};
 </script>
 
 </body>
