@@ -1,17 +1,21 @@
 const express = require("express");
+const http = require("http");
+const { Server } = require("ws");
 const cors = require("cors");
 const path = require("path");
 
 const app = express();
+const server = http.createServer(app);
+const wss = new Server({ server });
 
 app.use(cors());
 app.use(express.json());
 
-// Serve os arquivos da pasta 'public' (onde fica o player.html e o controle.html)
+// Serve os arquivos da pasta 'public'
 app.use(express.static(path.join(__dirname, "public")));
 
-// ===================================== 
-// ESTADO DO X-STREAM
+// =====================================
+// ESTADO UNIFICADO DO X-STREAM
 // =====================================
 let transmissao = {
     ativo: false,
@@ -21,7 +25,9 @@ let transmissao = {
     reproduzindo: true,
     volume: 100,
     mudo: false,
-    seek: 0, // Segundos para pular (+10 ou -10)
+    seek: 0,
+    currentTime: 0,     // Tempo exato para sincronia em tempo real
+    updatedAt: Date.now(),
     ultimoComando: "",
     atualizado: Date.now()
 };
@@ -29,7 +35,7 @@ let transmissao = {
 // Lista de requisições da TV aguardando comandos (Long Polling)
 let conexoesEsperando = [];
 
-// Função para notificar a TV imediatamente
+// Função para notificar a TV via Long Polling imediatamente
 function notificarTV() {
     while (conexoesEsperando.length > 0) {
         const res = conexoesEsperando.shift();
@@ -37,13 +43,27 @@ function notificarTV() {
             res.json(transmissao);
         } catch (e) {}
     }
+    
+    // Notifica também todos os clientes via WebSocket (para o outro player em tempo real)
+    broadcast({
+        tipo: 'sync-state',
+        ...transmissao
+    });
+}
+
+function obterTempoAtual() {
+    if (!transmissao.reproduzindo) {
+        return transmissao.currentTime;
+    }
+    const segundosDecorridos = (Date.now() - transmissao.updatedAt) / 1000;
+    return transmissao.currentTime + segundosDecorridos;
 }
 
 // =====================================
 // ROTAS DE NAVEGAÇÃO
 // =====================================
 app.get("/", (req, res) => {
-    res.send("Servidor X-Stream online");
+    res.send("Servidor X-Stream unificado online");
 });
 
 app.get("/player", (req, res) => {
@@ -56,7 +76,6 @@ app.get("/player", (req, res) => {
 app.get("/status", (req, res) => {
     conexoesEsperando.push(res);
 
-    // Se nenhum comando for enviado em 8 segundos, responde para manter a conexão ativa
     req.setTimeout(8000, () => {
         const index = conexoesEsperando.indexOf(res);
         if (index !== -1) {
@@ -90,6 +109,8 @@ app.post("/enviar", (req, res) => {
         transmissao.video = url;
         transmissao.ativo = true;
         transmissao.reproduzindo = true;
+        transmissao.currentTime = 0;
+        transmissao.updatedAt = Date.now();
     }
 
     transmissao.atualizado = Date.now();
@@ -99,11 +120,19 @@ app.post("/enviar", (req, res) => {
 });
 
 // =====================================
-// CONTROLE REMOTO COMPLETO
+// CONTROLE REMOTO COMPLETO (100% DOS BOTÕES)
 // =====================================
 app.post("/controle", (req, res) => {
     const acao = req.body.acao;
+    const tempoCliente = req.body.time;
+    
     transmissao.ultimoComando = acao;
+
+    // Atualiza o tempo base antes de modificar o estado de reprodução
+    if (acao === 'play' || acao === 'pause' || acao === 'resume' || acao === 'seek') {
+        transmissao.currentTime = tempoCliente !== undefined ? Number(tempoCliente) : obterTempoAtual();
+        transmissao.updatedAt = Date.now();
+    }
 
     switch (acao) {
         case "next":
@@ -113,7 +142,14 @@ app.post("/controle", (req, res) => {
             videoAnterior();
             break;
         case "play":
+            // Alterna o estado reproduzindo
             transmissao.reproduzindo = !transmissao.reproduzindo;
+            break;
+        case "resume":
+            transmissao.reproduzindo = true;
+            break;
+        case "pause":
+            transmissao.reproduzindo = false;
             break;
         case "vol_up":
             if (transmissao.volume < 100) transmissao.volume += 10;
@@ -129,12 +165,12 @@ app.post("/controle", (req, res) => {
             break;
         case "ff":
         case "seek_forward":
-        case "right": // Avançar 10 segundos
+        case "right":
             transmissao.seek = 10;
             break;
         case "rw":
         case "seek_backward":
-        case "left": // Voltar 10 segundos
+        case "left":
             transmissao.seek = -10;
             break;
         case "zerar_seek":
@@ -152,7 +188,7 @@ app.post("/controle", (req, res) => {
     transmissao.atualizado = Date.now();
     res.json({ sucesso: true, transmissao });
 
-    notificarTV(); // ⚡ Dispara o comando imediatamente para a TV!
+    notificarTV(); 
 });
 
 // =====================================
@@ -165,6 +201,8 @@ app.post("/selecionar", (req, res) => {
         transmissao.video = transmissao.fila[index].url;
         transmissao.ativo = true;
         transmissao.reproduzindo = true;
+        transmissao.currentTime = 0;
+        transmissao.updatedAt = Date.now();
     }
     transmissao.atualizado = Date.now();
     res.json({ sucesso: true, transmissao });
@@ -203,6 +241,53 @@ app.get("/fila", (req, res) => {
 });
 
 // =====================================
+// WEBSOCKET PARA O SEGUNDO PLAYER (TEMPO REAL ABSOLUTO)
+// =====================================
+wss.on('connection', (ws) => {
+    // Envia o estado atual imediatamente para o player que conectar
+    ws.send(JSON.stringify({
+        tipo: 'init-state',
+        ...transmissao,
+        currentTimeCalculado: obterTempoAtual()
+    }));
+
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            if (data.acao) {
+                // Se o player enviar comando via WS, repassa para o estado global
+                transmissao.ultimoComando = data.acao;
+                if (data.currentTime !== undefined) {
+                    transmissao.currentTime = Number(data.currentTime);
+                    transmissao.updatedAt = Date.now();
+                }
+                notificarTV();
+            }
+        } catch (e) {}
+    });
+});
+
+// Pulso de sincronia global (Tick) a cada 3 segundos para eliminar qualquer drift entre os players
+setInterval(() => {
+    if (transmissao.ativo && transmissao.reproduzindo) {
+        broadcast({
+            tipo: 'sync-tick',
+            currentTime: obterTempoAtual(),
+            updatedAt: Date.now()
+        });
+    }
+}, 3000);
+
+function broadcast(data) {
+    const payload = JSON.stringify(data);
+    wss.clients.forEach((client) => {
+        if (client.readyState === 1) {
+            client.send(payload);
+        }
+    });
+}
+
+// =====================================
 // FUNÇÕES AUXILIARES
 // =====================================
 function proximoVideo() {
@@ -211,6 +296,8 @@ function proximoVideo() {
         transmissao.video = transmissao.fila[transmissao.atual].url;
         transmissao.ativo = true;
         transmissao.reproduzindo = true;
+        transmissao.currentTime = 0;
+        transmissao.updatedAt = Date.now();
     }
 }
 
@@ -220,6 +307,8 @@ function videoAnterior() {
         transmissao.video = transmissao.fila[transmissao.atual].url;
         transmissao.ativo = true;
         transmissao.reproduzindo = true;
+        transmissao.currentTime = 0;
+        transmissao.updatedAt = Date.now();
     }
 }
 
@@ -229,10 +318,11 @@ function limparTodaFila() {
     transmissao.atual = 0;
     transmissao.ativo = false;
     transmissao.reproduzindo = false;
-    transmissao.atualizado = Date.now();
+    transmissao.currentTime = 0;
+    transmissao.updatedAt = Date.now();
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("🚀 Servidor X-Stream rodando na porta", PORT);
+server.listen(PORT, () => {
+    console.log("🚀 Servidor unificado X-Stream rodando na porta", PORT);
 });
