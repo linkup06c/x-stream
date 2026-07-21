@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Libera a pasta public (onde fica o tv.html)
+// Libera arquivos estáticos da pasta public
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
@@ -16,14 +16,15 @@ const wss = new WebSocket.Server({ server });
 
 // Estado Mestre Central
 let masterState = {
-  video: null,
-  ativo: false,
-  playing: false,
-  reproduzindo: false,
-  currentTime: 0,
-  updatedAt: Date.now(),
+  video: null,          // URL do vídeo/áudio atual
+  ativo: false,         // Transmissão ativa?
+  playing: false,       // Rodando ou pausado?
+  reproduzindo: false,  // Compatibilidade com Smart TV
+  currentTime: 0,       // Tempo em segundos
+  updatedAt: Date.now(),// Timestamp de sincronização
   volume: 100,
   mudo: false,
+  seek: 0,
   ultimoComando: null,
   comandoId: 0,
   fila: [],
@@ -38,7 +39,7 @@ function getCurrentPosition() {
   return masterState.currentTime + elapsedSeconds;
 }
 
-// Envia o estado + ação para todos os clientes WebSocket
+// Dispara atualizações via WebSocket para clientes compatíveis
 function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
   const payload = JSON.stringify({
@@ -57,18 +58,20 @@ function broadcastState(acaoExtra = null) {
   });
 }
 
-// Rota HTTP Polling para a Smart TV
+// Rota HTTP Polling usada pela Smart TV
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
   res.json({
     ...masterState,
     ativo: !!masterState.video,
+    playing: masterState.playing,
+    reproduzindo: masterState.playing,
     currentTime: currentPos,
     position: currentPos
   });
 });
 
-// Envio de Vídeo
+// Envio de nova mídia
 app.post('/enviar', (req, res) => {
   const url = req.body.url;
   if (url) {
@@ -83,7 +86,7 @@ app.post('/enviar', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// Controle Remoto
+// Recepção de comandos do Controle Remoto
 app.post('/controle', (req, res) => {
   const acao = req.body.acao;
 
@@ -91,8 +94,8 @@ app.post('/controle', (req, res) => {
     switch (acao) {
       case 'play':
       case 'resume':
-        // Alterna entre Play e Pause se for acionado repetidamente
         if (!masterState.video) break;
+        // Alterna (toggle) entre play e pause se clicado consecutivamente
         masterState.playing = !masterState.playing;
         masterState.reproduzindo = masterState.playing;
         if (!masterState.playing) {
@@ -131,6 +134,10 @@ app.post('/controle', (req, res) => {
         masterState.volume = Math.max(0, masterState.volume - 10);
         break;
 
+      case 'zerar_seek':
+        masterState.seek = 0;
+        break;
+
       case 'next':
         if (masterState.fila && masterState.fila.length > 0 && masterState.atual < masterState.fila.length - 1) {
           masterState.atual++;
@@ -157,15 +164,13 @@ app.post('/controle', (req, res) => {
 
     masterState.ultimoComando = acao;
     masterState.comandoId = Date.now();
-
-    // Notifica players WebSocket imediatamente
     broadcastState(acao);
   }
 
   res.json({ success: true, state: masterState });
 });
 
-// Conexão WebSocket
+// WebSocket para o Player Secundário / WebSoft
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
@@ -189,9 +194,9 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Serve o tv.html na raiz e na rota /tv
-app.get(['/', '/tv'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'smarttv.html'));
+// Rota principal e atalhos para abrir o arquivo smart-tv.html
+app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'smart-tv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
