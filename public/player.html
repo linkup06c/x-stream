@@ -55,7 +55,7 @@ html, body {
     z-index: 9999;
     display: flex;
     align-items: center;
-    gap: 12px; /* ⚡ Espaçamento confortável entre a bolinha e o texto */
+    gap: 12px;
     background: rgba(0, 0, 0, 0.6);
     padding: 6px 14px;
     border-radius: 20px;
@@ -65,15 +65,15 @@ html, body {
 }
 
 .dot {
-    width: 12px; /* ⚡ Bolinha com diâmetro maior que o texto */
+    width: 12px;
     height: 12px;
     border-radius: 50%;
     transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .statusText {
-    color: #ffffff !important; /* ⚡ Texto sempre branco */
-    font-size: 11px; /* ⚡ Tamanho menor do que a bolinha */
+    color: #ffffff !important;
+    font-size: 11px;
     font-weight: bold;
     letter-spacing: 1.5px;
     text-transform: uppercase;
@@ -336,6 +336,74 @@ mediaVideo.onplaying = function() { atualizarStatus(true); };
 mediaVideo.onpause = function() { atualizarStatus(false); };
 mediaAudio.onplaying = function() { atualizarStatus(true); };
 mediaAudio.onpause = function() { atualizarStatus(false); };
+
+// =====================================
+// 📺 CONTROLE DE TECLAS CH+ / CH- (LONG PRESS & SHORT PRESS)
+// =====================================
+var keyTimer = null;
+var isLongPress = false;
+
+// 33 = PageUp, 427 = CH_UP (TVs), 38 = Seta Cima
+function isChannelUp(code) {
+    return code === 33 || code === 427 || code === 38;
+}
+
+// 34 = PageDown, 428 = CH_DOWN (TVs), 40 = Seta Baixo
+function isChannelDown(code) {
+    return code === 34 || code === 428 || code === 40;
+}
+
+window.addEventListener("keydown", function(event) {
+    var key = event.keyCode || event.which;
+
+    if (!isChannelUp(key) && !isChannelDown(key)) return;
+
+    // Previne comportamento padrão do navegador
+    event.preventDefault();
+
+    // Se já estiver contando o tempo, não reinicia
+    if (keyTimer) return;
+
+    isLongPress = false;
+
+    // Dispara após 500 milissegundos se a tecla continuar pressionada
+    keyTimer = setTimeout(function() {
+        isLongPress = true;
+
+        if (tipoAtual === "video") {
+            if (isChannelUp(key)) {
+                // SEGURAR CH+ -> AVANÇA 15 MINUTOS (900 SEGUNDOS)
+                mediaVideo.currentTime = Math.min(mediaVideo.duration, mediaVideo.currentTime + 900);
+            } else if (isChannelDown(key)) {
+                // SEGURAR CH- -> VOLTA 15 MINUTOS (900 SEGUNDOS)
+                mediaVideo.currentTime = Math.max(0, mediaVideo.currentTime - 900);
+            }
+        }
+    }, 500);
+});
+
+window.addEventListener("keyup", function(event) {
+    var key = event.keyCode || event.which;
+
+    if (!isChannelUp(key) && !isChannelDown(key)) return;
+
+    // Cancela o temporizador do clique longo
+    clearTimeout(keyTimer);
+    keyTimer = null;
+
+    // Se a tecla foi solta ANTES dos 500ms -> FOI UM CLIQUE RÁPIDO
+    if (!isLongPress) {
+        if (isChannelUp(key)) {
+            // CLIQUE RÁPIDO CH+ -> PRÓXIMO VÍDEO
+            enviarComando("next");
+        } else if (isChannelDown(key)) {
+            // CLIQUE RÁPIDO CH- -> VÍDEO ANTERIOR
+            enviarComando("prev");
+        }
+    }
+
+    isLongPress = false;
+});
 
 // =====================================
 // ⚡ MOTOR DE LONG POLLING (50ms)
