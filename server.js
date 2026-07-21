@@ -191,7 +191,7 @@ wss.on('connection', (ws) => {
 
 // Serve o tv.html na raiz e na rota /tv
 app.get(['/', '/tv'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'tv.html'));
+  res.sendFile(path.join(__dirname, 'public', 'smarttv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
