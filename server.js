@@ -7,50 +7,69 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve os arquivos da pasta 'public' (onde fica o player.html e o controle.html)
 app.use(express.static(path.join(__dirname, "public")));
 
 // =====================================
-// ESTADO X-STREAM
-// COMPATÍVEL COM PLAYER E CONTROLE
+// ESTADO DO X-STREAM
 // =====================================
-
 let transmissao = {
     ativo: false,
-    
-    // PLAYER ANTIGO E NOVO
     video: "",
-    
-    // FILA NOVA
     fila: [],
     atual: 0,
-    
-    // CONTROLE DE PLAYER E MIDIA
-    reproduzindo: true, // true = play, false = pause
-    volume: 100,        // 0 a 100
-    mudo: false,        // true/false
-    
-    // COMANDOS DE NAVEGAÇÃO D-PAD / TV (opcional para o player tratar)
+    reproduzindo: true,
+    volume: 100,
+    mudo: false,
+    seek: 0, // Segundos para pular (+10 ou -10)
     ultimoComando: "",
-
     atualizado: Date.now()
 };
 
+// Lista de requisições da TV aguardando comandos (Long Polling)
+let conexoesEsperando = [];
+
+// Função para notificar a TV imediatamente
+function notificarTV() {
+    while (conexoesEsperando.length > 0) {
+        const res = conexoesEsperando.shift();
+        try {
+            res.json(transmissao);
+        } catch (e) {}
+    }
+}
+
 // =====================================
-// HOME
+// ROTAS DE NAVEGAÇÃO
 // =====================================
 app.get("/", (req, res) => {
     res.send("Servidor X-Stream online");
 });
 
-// =====================================
-// PLAYER TV
-// =====================================
 app.get("/player", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "player.html"));
 });
 
 // =====================================
-// ADICIONAR LINK
+// STATUS PARA TV (LONG POLLING INSTANTÂNEO)
+// =====================================
+app.get("/status", (req, res) => {
+    conexoesEsperando.push(res);
+
+    // Se nenhum comando for enviado em 8 segundos, responde para manter a conexão ativa
+    req.setTimeout(8000, () => {
+        const index = conexoesEsperando.indexOf(res);
+        if (index !== -1) {
+            conexoesEsperando.splice(index, 1);
+            try {
+                res.json(transmissao);
+            } catch (e) {}
+        }
+    });
+});
+
+// =====================================
+// ADICIONAR VÍDEO À FILA
 // =====================================
 app.post("/enviar", (req, res) => {
     const url = req.body.url;
@@ -66,7 +85,6 @@ app.post("/enviar", (req, res) => {
 
     transmissao.fila.push(item);
 
-    // Primeiro link inicia automaticamente
     if (transmissao.fila.length === 1) {
         transmissao.atual = 0;
         transmissao.video = url;
@@ -75,132 +93,91 @@ app.post("/enviar", (req, res) => {
     }
 
     transmissao.atualizado = Date.now();
-    console.log("Novo link recebido:", url);
+    res.json({ sucesso: true, transmissao });
 
-    res.json({
-        sucesso: true,
-        transmissao
-    });
-});
-
-// =====================================
-// STATUS PARA TV E APP
-// =====================================
-app.get("/status", (req, res) => {
-    res.json(transmissao);
+    notificarTV();
 });
 
 // =====================================
 // CONTROLE REMOTO COMPLETO
-// TRATA TODOS OS BOTÕES DO APP ANDROID
 // =====================================
 app.post("/controle", (req, res) => {
     const acao = req.body.acao;
-    console.log(`Comando recebido do controle: [${acao}]`);
-
     transmissao.ultimoComando = acao;
 
     switch (acao) {
-        // --- NAVEGAÇÃO DE FILA ---
         case "next":
             proximoVideo();
             break;
-
         case "previous":
             videoAnterior();
             break;
-
-        // --- PLAY / PAUSE ---
         case "play":
-            transmissao.reproduzindo = !transmissao.reproduzindo; // Alterna Play / Pause
+            transmissao.reproduzindo = !transmissao.reproduzindo;
             break;
-
-        // --- CONTROLE DE VOLUME ---
         case "vol_up":
             if (transmissao.volume < 100) transmissao.volume += 10;
             if (transmissao.volume > 100) transmissao.volume = 100;
-            transmissao.mudo = false; // Ao mudar volume, remove o mudo
+            transmissao.mudo = false;
             break;
-
         case "vol_down":
             if (transmissao.volume > 0) transmissao.volume -= 10;
             if (transmissao.volume < 0) transmissao.volume = 0;
             break;
-
         case "mute":
             transmissao.mudo = !transmissao.mudo;
             break;
-
-        // --- D-PAD / TECLAS DE NAVEGAÇÃO ---
-        case "up":
-        case "down":
-        case "home":
-        case "back":
-        case "menu":
-        case "info":
-        case "source":
-            // O comando fica registrado em 'ultimoComando' para o player.html reagir
+        case "ff":
+        case "seek_forward":
+        case "right": // Avançar 10 segundos
+            transmissao.seek = 10;
             break;
-
-        // --- AÇÕES ESPECIAIS ---
+        case "rw":
+        case "seek_backward":
+        case "left": // Voltar 10 segundos
+            transmissao.seek = -10;
+            break;
+        case "zerar_seek":
+            transmissao.seek = 0;
+            break;
         case "power":
             transmissao.ativo = !transmissao.ativo;
-            if (!transmissao.ativo) {
-                transmissao.reproduzindo = false;
-            }
+            if (!transmissao.ativo) transmissao.reproduzindo = false;
             break;
-
-        case "more":
         case "clear":
             limparTodaFila();
             break;
-
-        default:
-            console.log("Comando desconhecido:", acao);
     }
 
     transmissao.atualizado = Date.now();
+    res.json({ sucesso: true, transmissao });
 
-    res.json({
-        sucesso: true,
-        transmissao
-    });
+    notificarTV(); // ⚡ Dispara o comando imediatamente para a TV!
 });
 
 // =====================================
-// SELECIONAR ITEM DA FILA
+// GERENCIAMENTO DA FILA
 // =====================================
 app.post("/selecionar", (req, res) => {
     const index = Number(req.body.index);
-
     if (transmissao.fila[index]) {
         transmissao.atual = index;
         transmissao.video = transmissao.fila[index].url;
         transmissao.ativo = true;
         transmissao.reproduzindo = true;
     }
-
     transmissao.atualizado = Date.now();
-
-    res.json({
-        sucesso: true,
-        transmissao
-    });
+    res.json({ sucesso: true, transmissao });
+    notificarTV();
 });
 
-// =====================================
-// REMOVER LINK INDIVIDUAL
-// =====================================
 app.post("/remover", (req, res) => {
     const index = Number(req.body.index);
-
     if (transmissao.fila[index]) {
         transmissao.fila.splice(index, 1);
-
         if (transmissao.atual >= transmissao.fila.length) {
             transmissao.atual = transmissao.fila.length - 1;
         }
-
         if (transmissao.fila.length > 0) {
             transmissao.video = transmissao.fila[transmissao.atual].url;
         } else {
@@ -210,35 +187,19 @@ app.post("/remover", (req, res) => {
             transmissao.reproduzindo = false;
         }
     }
-
     transmissao.atualizado = Date.now();
-
-    res.json({
-        sucesso: true,
-        transmissao
-    });
+    res.json({ sucesso: true, transmissao });
+    notificarTV();
 });
 
-// =====================================
-// LIMPAR TODA A FILA
-// =====================================
 app.post("/limpar", (req, res) => {
     limparTodaFila();
-
-    res.json({
-        sucesso: true,
-        transmissao
-    });
+    res.json({ sucesso: true, transmissao });
+    notificarTV();
 });
 
-// =====================================
-// OBTER FILA ATUAL
-// =====================================
 app.get("/fila", (req, res) => {
-    res.json({
-        fila: transmissao.fila,
-        atual: transmissao.atual
-    });
+    res.json({ fila: transmissao.fila, atual: transmissao.atual });
 });
 
 // =====================================
@@ -271,11 +232,7 @@ function limparTodaFila() {
     transmissao.atualizado = Date.now();
 }
 
-// =====================================
-// START SERVER
-// =====================================
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
     console.log("🚀 Servidor X-Stream rodando na porta", PORT);
 });
