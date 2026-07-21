@@ -8,32 +8,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🟢 LIBERA A PASTA PUBLIC (Onde deve ficar o arquivo tv.html)
+// Libera a pasta public (onde fica o tv.html)
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// =========================================================
-// ESTADO MESTRE DA TRANSMISSÃO (Servidor Central)
-// =========================================================
+// Estado Mestre Central
 let masterState = {
-  video: null,          // URL do vídeo/áudio atual
-  ativo: false,         // Transmissão ativa?
-  playing: false,       // Rodando ou pausado?
-  reproduzindo: false,  // Campo de compatibilidade com a TV
-  currentTime: 0,       // Tempo em segundos
-  updatedAt: Date.now(),// Timestamp do servidor
-  volume: 100,          // Volume 0 a 100
+  video: null,
+  ativo: false,
+  playing: false,
+  reproduzindo: false,
+  currentTime: 0,
+  updatedAt: Date.now(),
+  volume: 100,
   mudo: false,
-  seek: 0,
+  ultimoComando: null,
+  comandoId: 0,
   fila: [],
   atual: 0
 };
 
-/**
- * Retorna o tempo exato em segundos do vídeo no milissegundo atual
- */
 function getCurrentPosition() {
   if (!masterState.playing || !masterState.video) {
     return masterState.currentTime;
@@ -42,13 +38,12 @@ function getCurrentPosition() {
   return masterState.currentTime + elapsedSeconds;
 }
 
-/**
- * Notifica clientes WebSocket (Player Secundário / App)
- */
-function broadcastState() {
+// Envia o estado + ação para todos os clientes WebSocket
+function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
   const payload = JSON.stringify({
-    tipo: "sync-transmission",
+    tipo: acaoExtra ? "comando" : "sync-transmission",
+    acao: acaoExtra,
     ...masterState,
     currentTime: currentPos,
     reproduzindo: masterState.playing,
@@ -62,27 +57,18 @@ function broadcastState() {
   });
 }
 
-// =========================================================
-// ROTA GET /status (HTTP POLLING DA SMART TV E TV BOX)
-// =========================================================
+// Rota HTTP Polling para a Smart TV
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
-  
   res.json({
     ...masterState,
-    video: masterState.video,
     ativo: !!masterState.video,
-    playing: masterState.playing,
-    reproduzindo: masterState.playing,
     currentTime: currentPos,
-    position: currentPos,
-    updatedAt: masterState.updatedAt
+    position: currentPos
   });
 });
 
-// =========================================================
-// ROTAS POST DE CONTROLE E ENVIO
-// =========================================================
+// Envio de Vídeo
 app.post('/enviar', (req, res) => {
   const url = req.body.url;
   if (url) {
@@ -92,11 +78,12 @@ app.post('/enviar', (req, res) => {
     masterState.reproduzindo = true;
     masterState.currentTime = 0;
     masterState.updatedAt = Date.now();
-    broadcastState();
+    broadcastState("play");
   }
   res.json({ success: true, state: masterState });
 });
 
+// Controle Remoto
 app.post('/controle', (req, res) => {
   const acao = req.body.acao;
 
@@ -104,24 +91,44 @@ app.post('/controle', (req, res) => {
     switch (acao) {
       case 'play':
       case 'resume':
+        // Alterna entre Play e Pause se for acionado repetidamente
+        if (!masterState.video) break;
+        masterState.playing = !masterState.playing;
+        masterState.reproduzindo = masterState.playing;
         if (!masterState.playing) {
-          masterState.playing = true;
-          masterState.reproduzindo = true;
-          masterState.updatedAt = Date.now();
+          masterState.currentTime = getCurrentPosition();
         }
+        masterState.updatedAt = Date.now();
         break;
 
       case 'pause':
-        if (masterState.playing) {
-          masterState.currentTime = getCurrentPosition();
-          masterState.playing = false;
-          masterState.reproduzindo = false;
-          masterState.updatedAt = Date.now();
-        }
+        masterState.currentTime = getCurrentPosition();
+        masterState.playing = false;
+        masterState.reproduzindo = false;
+        masterState.updatedAt = Date.now();
         break;
 
-      case 'zerar_seek':
-        masterState.seek = 0;
+      case 'power':
+      case 'clear':
+      case 'stop':
+        masterState.video = null;
+        masterState.ativo = false;
+        masterState.playing = false;
+        masterState.reproduzindo = false;
+        masterState.currentTime = 0;
+        masterState.updatedAt = Date.now();
+        break;
+
+      case 'mute':
+        masterState.mudo = !masterState.mudo;
+        break;
+
+      case 'vol_up':
+        masterState.volume = Math.min(100, masterState.volume + 10);
+        break;
+
+      case 'vol_down':
+        masterState.volume = Math.max(0, masterState.volume - 10);
         break;
 
       case 'next':
@@ -136,6 +143,7 @@ app.post('/controle', (req, res) => {
         break;
 
       case 'prev':
+      case 'previous':
         if (masterState.fila && masterState.fila.length > 0 && masterState.atual > 0) {
           masterState.atual--;
           masterState.video = masterState.fila[masterState.atual].url;
@@ -147,34 +155,33 @@ app.post('/controle', (req, res) => {
         break;
     }
 
-    broadcastState();
+    masterState.ultimoComando = acao;
+    masterState.comandoId = Date.now();
+
+    // Notifica players WebSocket imediatamente
+    broadcastState(acao);
   }
 
   res.json({ success: true, state: masterState });
 });
 
-// =========================================================
-// WEBSOCKET (SEGUNDO PLAYER / APP WEBSOFT)
-// =========================================================
+// Conexão WebSocket
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
     ...masterState,
     currentTime: getCurrentPosition(),
-    reproduzindo: masterState.playing,
     updatedAt: Date.now()
   }));
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-
       if (data.tipo === 'sync-request') {
         ws.send(JSON.stringify({
           tipo: "sync-transmission",
           ...masterState,
           currentTime: getCurrentPosition(),
-          reproduzindo: masterState.playing,
           updatedAt: Date.now()
         }));
       }
@@ -182,11 +189,9 @@ wss.on('connection', (ws) => {
   });
 });
 
-// =========================================================
-// ROTA PRINCIPAL: ABRE O HTML DA TV E TV BOX DIRECT
-// =========================================================
+// Serve o tv.html na raiz e na rota /tv
 app.get(['/', '/tv'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'smarttv.html'));
+  res.sendFile(path.join(__dirname, 'public', 'tv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
