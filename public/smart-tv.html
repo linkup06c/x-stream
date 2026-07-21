@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>X-Stream Engine Ultra Supremo V3</title>
+<title>X-Stream Engine Ultra Universal Supremo</title>
 
-<!-- BIBLIOTECAS DE SUPORTE A STREAMING UNIVERSAL (HLS & MPEG-DASH) -->
+<!-- BIBLIOTECAS DE SUPORTE TOTAL A STREAMING (HLS & MPEG-DASH) -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
 
 <style>
-/* OTIMIZAÇÃO ABSOLUTA DE GPU E RAM */
+/* OTIMIZAÇÃO ABSOLUTA DE GPU E RAM PARA SMART TV */
 html, body {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
@@ -20,9 +20,10 @@ html, body {
     color: #fff;
     -webkit-user-select: none;
     user-select: none;
+    outline: none; /* Remove borda de foco visual */
 }
 
-#mediaVideo, #mediaImage {
+#mediaVideo, #mediaAudio, #mediaImage {
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%;
     background: #000; 
@@ -34,8 +35,8 @@ html, body {
 }
 
 #mediaVideo { z-index: 10; }
+#mediaAudio { z-index: 12; background: #111; } /* Tela preta elegante para reprodução de áudio puro */
 #mediaImage { z-index: 15; }
-#mediaAudio { display: none; }
 
 /* INDICADOR DISCRETO LEVE */
 #statusBadge {
@@ -46,7 +47,7 @@ html, body {
 }
 
 .dot { width: 9px; height: 9px; border-radius: 50%; }
-.statusText { font-size: 10px; font-weight: bold; text-transform: uppercase; }
+.statusText { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #fff; }
 
 #statusBadge.offline .dot { background: #ff3333; }
 #statusBadge.live .dot { background: #00ff66; }
@@ -70,7 +71,7 @@ html, body {
 </style>
 </head>
 
-<body>
+<body tabindex="0" id="appBody">
 
 <div id="keyDebug"></div>
 
@@ -80,8 +81,8 @@ html, body {
 </div>
 
 <video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
-<audio id="mediaAudio" autoplay preload="auto"></audio>
-<img id="mediaImage">
+<audio id="mediaAudio" autoplay preload="auto" crossorigin="anonymous"></audio>
+<img id="mediaImage" alt="Media Image">
 
 <div id="errorBox">
     <div id="errorTitle">Aviso de Mídia</div>
@@ -101,6 +102,7 @@ var mediaImage = document.getElementById("mediaImage");
 var statusBadge = document.getElementById("statusBadge");
 var statusText = document.getElementById("statusText");
 var keyDebug = document.getElementById("keyDebug");
+var appBody = document.getElementById("appBody");
 
 var tipoAtual = "";
 var urlAtual = "";
@@ -111,6 +113,16 @@ var debugTimeout = null;
 var wsConnection = null;
 var ultimoComandoIdProcessado = 0;
 var pingInterval = null;
+
+// GARANTE FOCO PERMANENTE NA TV PARA O CONTROLE FUNCIONAR
+function garantirFoco() {
+    if(appBody) {
+        appBody.focus();
+    }
+}
+window.onload = garantirFoco;
+document.addEventListener("click", garantirFoco);
+setInterval(garantirFoco, 3000); // Reforça o foco a cada 3s caso o navegador da TV tente roubá-lo
 
 function showDebug(msg) {
     keyDebug.innerText = msg;
@@ -138,17 +150,15 @@ function mostrarErro(msg){
     }
 }
 
-// LIMPEZA PROFUNDA DE RAM E RECURSOS DE VÍDEO
+// LIMPEZA PROFUNDA DE RAM E RECURSOS DE MÍDIA
 function limparMidia(){
     atualizarStatus(false);
 
-    // Destrói HLS liberando buffers de memória
     if (hlsPlayer) {
         try { hlsPlayer.destroy(); } catch(e){}
         hlsPlayer = null;
     }
 
-    // Destrói DASH liberando buffers de memória
     if (dashPlayer) {
         try { dashPlayer.reset(); } catch(e){}
         dashPlayer = null;
@@ -171,7 +181,7 @@ function limparMidia(){
     } catch(e){}
 }
 
-// SELETOR DE PROTOCOLO INTELIGENTE (HLS, DASH ou MP4)
+// SELETOR UNIVERSAL DE MÍDIA (VÍDEO, ÁUDIO, IMAGEM)
 function receberMidia(url, tempoInicial){
     if(!url || url === urlAtual) return;
     urlAtual = url;
@@ -179,11 +189,24 @@ function receberMidia(url, tempoInicial){
 
     var urlLimpa = url.split('?')[0].toLowerCase();
 
-    if (urlLimpa.endsWith('.m3u8')) {
+    // Verificação de Imagens (JPG, PNG, GIF, WEBP, BMP, SVG)
+    if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(urlLimpa)) {
+        iniciarImagem(url);
+    } 
+    // Verificação de Áudios (MP3, AAC, WAV, OGG, FLAC, M4A, WMA)
+    else if (/\.(mp3|aac|wav|ogg|flac|m4a|wma)$/i.test(urlLimpa)) {
+        iniciarAudio(url);
+    } 
+    // Streams HLS (.m3u8)
+    else if (urlLimpa.endsWith('.m3u8')) {
         iniciarHLS(url, tempoInicial);
-    } else if (urlLimpa.endsWith('.mpd')) {
+    } 
+    // Streams DASH (.mpd)
+    else if (urlLimpa.endsWith('.mpd')) {
         iniciarDASH(url, tempoInicial);
-    } else {
+    } 
+    // Vídeos Padrão (MP4, WebM, MKV, MOV, etc.)
+    else {
         iniciarVideoPadrao(url, tempoInicial);
     }
 }
@@ -191,7 +214,7 @@ function receberMidia(url, tempoInicial){
 function iniciarHLS(url, tempoInicial) {
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
         hlsPlayer = new Hls({
-            enableWorker: false, // Desligado para proteger CPUs fracas de TV
+            enableWorker: false,
             maxBufferLength: 8,
             maxMaxBufferLength: 15,
             liveSyncDurationCount: 3,
@@ -248,11 +271,11 @@ function iniciarVideoPadrao(url, tempoInicial){
     mediaVideo.onloadeddata = ativar;
     mediaVideo.oncanplay = ativar;
     mediaVideo.onerror = function(){
-        if(!confirmado) tentarAudio(url);
+        if(!confirmado) iniciarAudio(url);
     };
 }
 
-function tentarAudio(url){
+function iniciarAudio(url){
     var confirmado = false;
     mediaAudio.src = url;
     mediaAudio.load();
@@ -260,15 +283,17 @@ function tentarAudio(url){
         if(confirmado) return;
         confirmado = true;
         tipoAtual = "audio";
-        mediaAudio.play();
-        atualizarStatus(true);
+        mostrarAudio();
+        mediaAudio.play().then(function(){
+            atualizarStatus(true);
+        }).catch(function(){});
     };
     mediaAudio.onerror = function(){
-        if(!confirmado) tentarImagem(url);
+        if(!confirmado) iniciarImagem(url);
     };
 }
 
-function tentarImagem(url){
+function iniciarImagem(url){
     var img = new Image();
     img.onload = function(){
         tipoAtual = "image";
@@ -278,7 +303,7 @@ function tentarImagem(url){
     };
     img.onerror = function(){
         atualizarStatus(false);
-        mostrarErro("Formato de mídia não suportado.");
+        mostrarErro("Formato de arquivo não suportado.");
     };
     img.src = url;
 }
@@ -292,6 +317,7 @@ function esconderTodos(){
 }
 
 function mostrarVideo(){ esconderTodos(); mediaVideo.style.display = "block"; }
+function mostrarAudio(){ esconderTodos(); mediaAudio.style.display = "block"; }
 function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
 
 function executarPlayComTempo(tempoInicial){
@@ -311,6 +337,10 @@ function executarPlayComTempo(tempoInicial){
 mediaVideo.onplaying = function() { atualizarStatus(true); };
 mediaVideo.onpause = function() { atualizarStatus(false); };
 mediaVideo.onended = function(){ enviarComando("next_track"); };
+
+mediaAudio.onplaying = function() { atualizarStatus(true); };
+mediaAudio.onpause = function() { atualizarStatus(false); };
+mediaAudio.onended = function(){ enviarComando("next_track"); };
 
 // ==========================================
 // PROCESSAMENTO DO ESTADO DO SERVIDOR
@@ -337,22 +367,23 @@ function processarEstadoServidor(dados) {
         }
     }
 
-    if(tipoAtual === "video" && mediaVideo){
+    var midiaAtiva = (tipoAtual === "audio") ? mediaAudio : mediaVideo;
+    if(midiaAtiva && tipoAtual !== "image"){
         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
-        if(isPlaying === false && !mediaVideo.paused){
-            mediaVideo.pause();
-        } else if(isPlaying === true && mediaVideo.paused){
-            mediaVideo.play().catch(function(){});
+        if(isPlaying === false && !midiaAtiva.paused){
+            midiaAtiva.pause();
+        } else if(isPlaying === true && midiaAtiva.paused){
+            midiaAtiva.play().catch(function(){});
         }
 
-        if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
-        if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
+        if(dados.volume !== undefined){ midiaAtiva.volume = dados.volume / 100; }
+        if(dados.mudo !== undefined){ midiaAtiva.muted = dados.mudo; }
 
         if(dados.seek && dados.seek !== 0 && dados.comandoId !== ultimoComandoIdProcessado){
             ultimoComandoIdProcessado = dados.comandoId;
-            var novoTempo = mediaVideo.currentTime + dados.seek;
-            mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
+            var novoTempo = midiaAtiva.currentTime + dados.seek;
+            midiaAtiva.currentTime = Math.max(0, Math.min(novoTempo, midiaAtiva.duration || 0));
             enviarComando("seek_reset");
         }
     }
@@ -364,14 +395,13 @@ function processarEstadoServidor(dados) {
 }
 
 // ==========================================
-// CONEXÃO WEBSOCKET BLINDADA COM HEARTBEAT
+// CONEXÃO WEBSOCKET COM HEARTBEAT
 // ==========================================
 function iniciarWebSocket() {
     try {
         wsConnection = new WebSocket(WS_URL);
         
         wsConnection.onopen = function() {
-            // Envia um ping a cada 25s para manter a conexão ativa na TV
             clearInterval(pingInterval);
             pingInterval = setInterval(function(){
                 if(wsConnection && wsConnection.readyState === 1){
@@ -389,7 +419,7 @@ function iniciarWebSocket() {
 
         wsConnection.onclose = function() {
             clearInterval(pingInterval);
-            setTimeout(iniciarWebSocket, 4000); // Reconexão automática rápida
+            setTimeout(iniciarWebSocket, 4000);
         };
     } catch(e) {
         setTimeout(iniciarWebSocket, 4000);
@@ -406,27 +436,29 @@ function enviarComando(acao){
 }
 
 // ==========================================
-// CONTROLE REMOTO DA TV COM RESPOSTA INSTANTÂNEA
+// CONTROLE REMOTO DA TV - ESCUTA GLOBAL BLINDADA
 // ==========================================
-document.addEventListener("keydown", function(e) {
+window.addEventListener("keydown", function(e) {
+    garantirFoco(); // Força o foco em cada toque no controle
     var key = e.keyCode || e.which;
     var acao = null;
+    var midiaAtiva = (tipoAtual === "audio") ? mediaAudio : mediaVideo;
 
     switch(key) {
-        case 13:   // OK / Enter -> Alternar Play/Pause local imediato
+        case 13:   // OK / Enter -> Toggle Play/Pause imediato
             acao = "toggle_play";
-            if(mediaVideo){
-                if(mediaVideo.paused) mediaVideo.play().catch(function(){});
-                else mediaVideo.pause();
+            if(midiaAtiva && tipoAtual !== "image"){
+                if(midiaAtiva.paused) midiaAtiva.play().catch(function(){});
+                else midiaAtiva.pause();
             }
             break;
         case 37:   // Seta Esquerda -> Recuar 15s instantâneo
             acao = "seek_backward";
-            if(mediaVideo) mediaVideo.currentTime = Math.max(0, mediaVideo.currentTime - 15);
+            if(midiaAtiva && tipoAtual !== "image") midiaAtiva.currentTime = Math.max(0, midiaAtiva.currentTime - 15);
             break;
         case 39:   // Seta Direita -> Avançar 15s instantâneo
             acao = "seek_forward";
-            if(mediaVideo) mediaVideo.currentTime = Math.min(mediaVideo.duration || 0, mediaVideo.currentTime + 15);
+            if(midiaAtiva && tipoAtual !== "image") midiaAtiva.currentTime = Math.min(midiaAtiva.duration || 0, midiaAtiva.currentTime + 15);
             break;
         case 38:   // Seta Cima -> Volume Up
             acao = "volume_up";
@@ -455,7 +487,7 @@ document.addEventListener("keydown", function(e) {
         showDebug("📺 " + acao.toUpperCase());
         enviarComando(acao);
     }
-});
+}, true); // UseCapture ativado para interceptar antes de qualquer outro elemento
 </script>
 </body>
 </html>
