@@ -186,7 +186,7 @@ wss.on('connection', (ws) => {
 // ROTA PRINCIPAL: ABRE O HTML DA TV E TV BOX DIRECT
 // =========================================================
 app.get(['/', '/tv'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'tv.html'));
+  res.sendFile(path.join(__dirname, 'public', 'smarttv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
