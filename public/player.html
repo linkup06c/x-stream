@@ -1,223 +1,305 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
+<!DOCTYPE html>
+<html lang="pt-BR">
 
-const app = express();
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>X-Stream Universal Player</title>
 
-app.use(cors());
-app.use(express.json());
+<style>
+html, body {
+    margin:0; padding:0;
+    width:100%; height:100%;
+    background:#000;
+    overflow:hidden;
+    font-family:Arial,Helvetica,sans-serif;
+    color:white;
+}
 
-app.use(express.static(path.join(__dirname, "public")));
+#mediaVideo {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%;
+    background:#000; object-fit:contain;
+    display:none; z-index:10;
+}
 
-// =====================================
-// ESTADO X-STREAM
-// =====================================
-let transmissao = {
-    ativo: false,
-    video: "",
-    fila: [],
-    atual: 0,
-    reproduzindo: true,
-    volume: 100,
-    mudo: false,
-    ultimoComando: "",
-    atualizado: Date.now()
-};
+#mediaAudio { display:none; }
 
-// Conexões da TV aguardando resposta (Long Polling)
-let conexoesEsperando = [];
+#mediaImage {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%;
+    background:#000; object-fit:contain;
+    display:none; z-index:15;
+}
 
-// Função para notificar a TV no mesmo milissegundo
-function notificarTV() {
-    while (conexoesEsperando.length > 0) {
-        const res = conexoesEsperando.shift();
-        try {
-            res.json(transmissao);
-        } catch (e) {}
+#waiting {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%;
+    background:#000; display:flex;
+    align-items:center; justify-content:center;
+    flex-direction:column; font-size:28px; z-index:5000;
+}
+
+.loader {
+    width:55px; height:55px; border-radius:50%;
+    border:6px solid #555; border-top-color:white;
+    animation: spin 1s linear infinite; margin-bottom:25px;
+}
+
+@keyframes spin {
+    from { transform:rotate(0deg); }
+    to { transform:rotate(360deg); }
+}
+
+#errorBox {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%; background:#000;
+    display:none; align-items:center; justify-content:center;
+    flex-direction:column; text-align:center; z-index:20000;
+}
+
+#errorTitle { font-size:40px; margin-bottom:20px; }
+#errorMessage { font-size:22px; max-width:80%; }
+
+#audioInfo {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%; background:#000;
+    display:none; align-items:center; justify-content:center;
+    flex-direction:column; z-index:20;
+}
+
+#audioInfo:before { content:"♫"; font-size:120px; margin-bottom:30px; }
+#audioTitle { font-size:32px; font-weight:bold; }
+
+button, video, audio, img { outline:none; }
+* { -webkit-tap-highlight-color:transparent; }
+
+#cursorLayer {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%; z-index:99999;
+    color:transparent; background:transparent;
+    user-select:text; -webkit-user-select:text; cursor:text;
+}
+</style>
+</head>
+
+<body>
+
+<div id="cursorLayer">Texto de teste invisível</div>
+
+<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto"></video>
+<audio id="mediaAudio" autoplay preload="auto"></audio>
+<img id="mediaImage">
+
+<div id="audioInfo">
+    <div id="audioTitle">Áudio</div>
+</div>
+
+<div id="waiting">
+    <div class="loader"></div>
+    <div>Aguardando transmissão...</div>
+</div>
+
+<div id="errorBox">
+    <div id="errorTitle">Erro</div>
+    <div id="errorMessage">Não foi possível reproduzir.</div>
+</div>
+
+<script>
+var mediaVideo = document.getElementById("mediaVideo");
+var mediaAudio = document.getElementById("mediaAudio");
+var mediaImage = document.getElementById("mediaImage");
+
+var tipoAtual = "";
+var urlAtual = "";
+var ultimaURL = "";
+var dadosServidor = {};
+
+(function(){
+    try {
+        var cursor = document.getElementById("cursorLayer");
+        if(cursor){
+            cursor.style.cursor="text";
+            cursor.style.userSelect="text";
+            cursor.style.webkitUserSelect="text";
+        }
+    }catch(e){}
+})();
+
+function esconderAguardando(){
+    var box = document.getElementById("waiting");
+    if(box){ box.style.display="none"; }
+}
+
+function mostrarAguardando(){
+    var box = document.getElementById("waiting");
+    if(box){ box.style.display="flex"; }
+}
+
+function mostrarErro(msg){
+    var box = document.getElementById("errorBox");
+    if(box){
+        box.style.display="flex";
+        var texto = document.getElementById("errorMessage");
+        if(texto){ texto.innerHTML=msg; }
     }
 }
 
-// =====================================
-// ROTAS BASE
-// =====================================
-app.get("/", (req, res) => {
-    res.send("Servidor X-Stream online");
-});
+function limparMidia(){
+    try{ mediaVideo.pause(); mediaVideo.removeAttribute("src"); mediaVideo.load(); }catch(e){}
+    try{ mediaAudio.pause(); mediaAudio.removeAttribute("src"); mediaAudio.load(); }catch(e){}
+    try{ mediaImage.removeAttribute("src"); }catch(e){}
+}
 
-app.get("/player", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "player.html"));
-});
+function receberMidia(url){
+    if(!url || url===urlAtual) return;
+    urlAtual=url;
+    limparMidia();
+    mostrarAguardando();
+    tentarVideo(url);
+}
 
-// =====================================
-// STATUS PARA TV (LONG POLLING INSTANTÂNEO)
-// =====================================
-app.get("/status", (req, res) => {
-    conexoesEsperando.push(res);
+function tentarVideo(url){
+    var confirmado=false;
+    mediaVideo.src=url;
+    mediaVideo.load();
 
-    // Se ninguém mandar comando em 8s, responde para manter a conexão viva
-    req.setTimeout(8000, () => {
-        const index = conexoesEsperando.indexOf(res);
-        if (index !== -1) {
-            conexoesEsperando.splice(index, 1);
-            try {
-                res.json(transmissao);
-            } catch (e) {}
-        }
-    });
-});
-
-// =====================================
-// ADICIONAR LINK
-// =====================================
-app.post("/enviar", (req, res) => {
-    const url = req.body.url;
-
-    if (!url) {
-        return res.status(400).json({ erro: "URL não enviada" });
-    }
-
-    const item = {
-        url: url,
-        nome: "Link " + (transmissao.fila.length + 1)
+    mediaVideo.onloadeddata=function(){
+        if(confirmado) return;
+        confirmado=true; tipoAtual="video";
+        mostrarVideo(); esconderAguardando(); iniciarVideo();
     };
 
-    transmissao.fila.push(item);
+    mediaVideo.oncanplay=function(){
+        if(confirmado) return;
+        confirmado=true; tipoAtual="video";
+        mostrarVideo(); esconderAguardando(); iniciarVideo();
+    };
 
-    if (transmissao.fila.length === 1) {
-        transmissao.atual = 0;
-        transmissao.video = url;
-        transmissao.ativo = true;
-        transmissao.reproduzindo = true;
+    mediaVideo.onerror=function(){
+        if(confirmado) return;
+        tentarAudio(url);
+    };
+}
+
+function tentarAudio(url){
+    var confirmado=false;
+    mediaAudio.src=url;
+    mediaAudio.load();
+
+    mediaAudio.oncanplay=function(){
+        if(confirmado) return;
+        confirmado=true; tipoAtual="audio";
+        esconderAguardando(); mediaAudio.play();
+    };
+
+    mediaAudio.onerror=function(){
+        if(confirmado) return;
+        tentarImagem(url);
+    };
+}
+
+function tentarImagem(url){
+    var img = new Image();
+    img.onload=function(){
+        tipoAtual="image"; mediaImage.src=url;
+        mostrarImagem(); esconderAguardando();
+    };
+    img.onerror=function(){ mostrarErro("Formato não suportado"); };
+    img.src=url;
+}
+
+function esconderTodos(){
+    mediaVideo.style.display="none";
+    mediaAudio.style.display="none";
+    mediaImage.style.display="none";
+}
+
+function mostrarVideo(){ esconderTodos(); mediaVideo.style.display="block"; }
+function mostrarImagem(){ esconderTodos(); mediaImage.style.display="block"; }
+
+function iniciarVideo(){
+    var tentativa = mediaVideo.play();
+    if(tentativa !== undefined){
+        tentativa.then(function(){ esconderAguardando(); })
+        .catch(function(){ setTimeout(iniciarVideo, 1000); });
     }
+}
 
-    transmissao.atualizado = Date.now();
-    res.json({ sucesso: true, transmissao });
-
-    notificarTV(); // Avisa a TV na hora
-});
-
-// =====================================
-// CONTROLE REMOTO COMPLETO
-// =====================================
-app.post("/controle", (req, res) => {
-    const acao = req.body.acao;
-    transmissao.ultimoComando = acao;
-
-    switch (acao) {
-        case "next":
-            proximoVideo();
-            break;
-        case "previous":
-            videoAnterior();
-            break;
-        case "play":
-            transmissao.reproduzindo = !transmissao.reproduzindo;
-            break;
-        case "vol_up":
-            if (transmissao.volume < 100) transmissao.volume += 10;
-            if (transmissao.volume > 100) transmissao.volume = 100;
-            transmissao.mudo = false;
-            break;
-        case "vol_down":
-            if (transmissao.volume > 0) transmissao.volume -= 10;
-            if (transmissao.volume < 0) transmissao.volume = 0;
-            break;
-        case "mute":
-            transmissao.mudo = !transmissao.mudo;
-            break;
-        case "power":
-            transmissao.ativo = !transmissao.ativo;
-            if (!transmissao.ativo) transmissao.reproduzindo = false;
-            break;
-        case "clear":
-            limparTodaFila();
-            break;
-    }
-
-    transmissao.atualizado = Date.now();
-    res.json({ sucesso: true, transmissao });
-
-    notificarTV(); // ⚡ Dispara o comando instantaneamente para a TV!
-});
+mediaVideo.onloadeddata=function(){ esconderAguardando(); };
+mediaVideo.onplaying=function(){ esconderAguardando(); };
+mediaVideo.onplay=function(){ esconderAguardando(); };
+mediaAudio.onplaying=function(){ esconderAguardando(); };
 
 // =====================================
-// SELECIONAR / REMOVER / LIMPAR
+// BUSCAR SERVIDOR COM LONG POLLING INSTANTÂNEO
 // =====================================
-app.post("/selecionar", (req, res) => {
-    const index = Number(req.body.index);
-    if (transmissao.fila[index]) {
-        transmissao.atual = index;
-        transmissao.video = transmissao.fila[index].url;
-        transmissao.ativo = true;
-        transmissao.reproduzindo = true;
-    }
-    transmissao.atualizado = Date.now();
-    res.json({ sucesso: true, transmissao });
-    notificarTV();
-});
+function verificarServidor(){
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/status", true);
 
-app.post("/remover", (req, res) => {
-    const index = Number(req.body.index);
-    if (transmissao.fila[index]) {
-        transmissao.fila.splice(index, 1);
-        if (transmissao.atual >= transmissao.fila.length) {
-            transmissao.atual = transmissao.fila.length - 1;
+    xhr.onreadystatechange=function(){
+        if(xhr.readyState===4){
+            if(xhr.status===200){
+                try{
+                    var dados = JSON.parse(xhr.responseText);
+                    dadosServidor=dados;
+
+                    var url="";
+                    if(dados.fila && dados.fila.length>0 && dados.fila[dados.atual]){
+                        url = dados.fila[dados.atual].url;
+                    }
+                    if(!url && dados.video){ url=dados.video; }
+
+                    if(dados.ativo && url){
+                        if(url!==ultimaURL){
+                            ultimaURL=url;
+                            receberMidia(url);
+                        }
+                    } else if (!dados.ativo || (!dados.video && (!dados.fila || dados.fila.length === 0))) {
+                        if(urlAtual !== ""){
+                            urlAtual = ""; ultimaURL = "";
+                            limparMidia(); esconderTodos(); mostrarAguardando();
+                        }
+                    }
+
+                    // AÇÕES DO CONTROLE
+                    if(tipoAtual === "video"){
+                        if(dados.reproduzindo === false && !mediaVideo.paused){
+                            mediaVideo.pause();
+                        } else if(dados.reproduzindo === true && mediaVideo.paused){
+                            mediaVideo.play();
+                        }
+                        if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
+                        if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
+                    }
+                }catch(e){}
+            }
+            // Assim que uma resposta chega, reconecta IMEDIATAMENTE sem delay
+            setTimeout(verificarServidor, 100);
         }
-        if (transmissao.fila.length > 0) {
-            transmissao.video = transmissao.fila[transmissao.atual].url;
-        } else {
-            transmissao.video = "";
-            transmissao.ativo = false;
-            transmissao.atual = 0;
-            transmissao.reproduzindo = false;
-        }
-    }
-    transmissao.atualizado = Date.now();
-    res.json({ sucesso: true, transmissao });
-    notificarTV();
-});
+    };
 
-app.post("/limpar", (req, res) => {
-    limparTodaFila();
-    res.json({ sucesso: true, transmissao });
-    notificarTV();
-});
-
-app.get("/fila", (req, res) => {
-    res.json({ fila: transmissao.fila, atual: transmissao.atual });
-});
-
-// =====================================
-// FUNÇÕES AUXILIARES
-// =====================================
-function proximoVideo() {
-    if (transmissao.atual < transmissao.fila.length - 1) {
-        transmissao.atual++;
-        transmissao.video = transmissao.fila[transmissao.atual].url;
-        transmissao.ativo = true;
-        transmissao.reproduzindo = true;
-    }
+    xhr.onerror = function() { setTimeout(verificarServidor, 2000); };
+    xhr.send();
 }
 
-function videoAnterior() {
-    if (transmissao.atual > 0) {
-        transmissao.atual--;
-        transmissao.video = transmissao.fila[transmissao.atual].url;
-        transmissao.ativo = true;
-        transmissao.reproduzindo = true;
-    }
+// Inicializa a escuta contínua
+verificarServidor();
+
+mediaVideo.onended=function(){ enviarComando("next"); };
+
+function enviarComando(acao){
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/controle", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(JSON.stringify({ acao:acao }));
 }
 
-function limparTodaFila() {
-    transmissao.fila = [];
-    transmissao.video = "";
-    transmissao.atual = 0;
-    transmissao.ativo = false;
-    transmissao.reproduzindo = false;
-    transmissao.atualizado = Date.now();
-}
+function recuperarPlayer(){ if(urlAtual){ receberMidia(urlAtual); } }
+mediaVideo.onerror=function(){ setTimeout(recuperarPlayer, 3000); };
+mediaAudio.onerror=function(){ setTimeout(recuperarPlayer, 3000); };
+</script>
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("🚀 Servidor X-Stream rodando na porta", PORT);
-});
+</body>
+</html>
