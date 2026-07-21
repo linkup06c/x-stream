@@ -4,84 +4,94 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>X-Stream Universal Player</title>
+<title>X-Stream Universal Player - Ultra Fluid</title>
 
 <style>
 /* =====================================
-   X-STREAM TV PLAYER - OTIMIZADO
+   X-STREAM TV PLAYER - ULTRA FLUIDO
+   OTIMIZADO PARA HARDWARE DE SMART TV
 ===================================== */
 html, body {
-    margin:0; padding:0;
-    width:100%; height:100%;
-    background:#000;
-    overflow:hidden;
-    font-family:Arial,Helvetica,sans-serif;
-    color:white;
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+    /* Desativa comportamentos indesejados de toque/scroll */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #mediaVideo {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%;
-    background:#000; object-fit:contain;
-    display:none; z-index:10;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000; 
+    object-fit: contain;
+    display: none; 
+    z-index: 10;
+    /* ⚡ ACELERAÇÃO POR HARDWARE (GPU DA TV) */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
-#mediaAudio { display:none; }
+#mediaAudio { display: none; }
 
 #mediaImage {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%;
-    background:#000; object-fit:contain;
-    display:none; z-index:15;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000; object-fit: contain;
+    display: none; z-index: 15;
+    transform: translate3d(0, 0, 0);
 }
 
 #waiting {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%;
-    background:#000; display:flex;
-    align-items:center; justify-content:center;
-    flex-direction:column; font-size:28px; z-index:5000;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000; display: flex;
+    align-items: center; justify-content: center;
+    flex-direction: column; font-size: 28px; z-index: 5000;
+    will-change: opacity;
 }
 
 .loader {
-    width:55px; height:55px; border-radius:50%;
-    border:6px solid #555; border-top-color:white;
-    animation: spin 1s linear infinite; margin-bottom:25px;
+    width: 55px; height: 55px; border-radius: 50%;
+    border: 6px solid #333; border-top-color: #fff;
+    animation: spin 0.8s linear infinite; margin-bottom: 25px;
 }
 
 @keyframes spin {
-    from { transform:rotate(0deg); }
-    to { transform:rotate(360deg); }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 #errorBox {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%; background:#000;
-    display:none; align-items:center; justify-content:center;
-    flex-direction:column; text-align:center; z-index:20000;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; background: #000;
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; z-index: 20000;
 }
 
-#errorTitle { font-size:40px; margin-bottom:20px; }
-#errorMessage { font-size:22px; max-width:80%; }
+#errorTitle { font-size: 40px; margin-bottom: 20px; }
+#errorMessage { font-size: 22px; max-width: 80%; }
 
 #audioInfo {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%; background:#000;
-    display:none; align-items:center; justify-content:center;
-    flex-direction:column; z-index:20;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; background: #000;
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; z-index: 20;
 }
 
-#audioInfo:before { content:"♫"; font-size:120px; margin-bottom:30px; }
-#audioTitle { font-size:32px; font-weight:bold; }
+#audioInfo:before { content: "♫"; font-size: 120px; margin-bottom: 30px; }
+#audioTitle { font-size: 32px; font-weight: bold; }
 
-button, video, audio, img { outline:none; }
-* { -webkit-tap-highlight-color:transparent; }
-
+/* Cursor invisível para manter o foco limpo no Sraf Browser */
 #cursorLayer {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%; z-index:99999;
-    color:transparent; background:transparent;
-    user-select:text; -webkit-user-select:text; cursor:text;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; z-index: 99999;
+    color: transparent; background: transparent;
+    cursor: text;
 }
 </style>
 </head>
@@ -90,7 +100,7 @@ button, video, audio, img { outline:none; }
 
 <div id="cursorLayer">Texto de teste invisível</div>
 
-<!-- PRELOAD METADATA PARA ECONOMIZAR MEMÓRIA E BANDA NA TV -->
+<!-- Otimizado com atributos de reprodução fluida para navegadores webkit/tv -->
 <video id="mediaVideo" autoplay playsinline webkit-playsinline preload="metadata" crossorigin="anonymous"></video>
 <audio id="mediaAudio" autoplay preload="metadata"></audio>
 <img id="mediaImage">
@@ -118,99 +128,101 @@ var tipoAtual = "";
 var urlAtual = "";
 var ultimaURL = "";
 var dadosServidor = {};
+var pollTimeout = null;
 
+// Isola o foco e o cursor
 (function(){
     try {
         var cursor = document.getElementById("cursorLayer");
         if(cursor){
-            cursor.style.cursor="text";
-            cursor.style.userSelect="text";
-            cursor.style.webkitUserSelect="text";
+            cursor.style.cursor = "text";
         }
     }catch(e){}
 })();
 
 function esconderAguardando(){
     var box = document.getElementById("waiting");
-    if(box){ box.style.display="none"; }
+    if(box && box.style.display !== "none"){ box.style.display = "none"; }
 }
 
 function mostrarAguardando(){
     var box = document.getElementById("waiting");
-    if(box){ box.style.display="flex"; }
+    if(box && box.style.display !== "flex"){ box.style.display = "flex"; }
 }
 
 function mostrarErro(msg){
     var box = document.getElementById("errorBox");
     if(box){
-        box.style.display="flex";
+        box.style.display = "flex";
         var texto = document.getElementById("errorMessage");
-        if(texto){ texto.innerHTML=msg; }
+        if(texto){ texto.innerHTML = msg; }
     }
 }
 
-// LIMPEZA PROFUNDA DE MEMÓRIA E BUFFER DA TV
+// ⚡ LIMPEZA CIRÚRGICA DE MEMÓRIA (Evita vazamento de RAM na TV)
 function limparMidia(){
     try {
         mediaVideo.pause();
-        mediaVideo.removeAttribute("src");
-        mediaVideo.load(); // Libera o buffer da RAM da TV
+        mediaVideo.src = "";
+        mediaVideo.load();
     } catch(e){}
 
     try {
         mediaAudio.pause();
-        mediaAudio.removeAttribute("src");
+        mediaAudio.src = "";
         mediaAudio.load();
     } catch(e){}
 
     try {
-        mediaImage.removeAttribute("src");
+        mediaImage.src = "";
     } catch(e){}
 }
 
 function receberMidia(url){
-    if(!url || url===urlAtual) return;
-    urlAtual=url;
+    if(!url || url === urlAtual) return;
+    urlAtual = url;
     limparMidia();
     mostrarAguardando();
     tentarVideo(url);
 }
 
 function tentarVideo(url){
-    var confirmado=false;
-    mediaVideo.src=url;
+    var confirmado = false;
+    mediaVideo.src = url;
     mediaVideo.load();
 
-    mediaVideo.onloadeddata=function(){
+    function ativarVideo(){
         if(confirmado) return;
-        confirmado=true; tipoAtual="video";
-        mostrarVideo(); esconderAguardando(); iniciarVideo();
-    };
+        confirmado = true;
+        tipoAtual = "video";
+        mostrarVideo();
+        esconderAguardando();
+        iniciarVideo();
+    }
 
-    mediaVideo.oncanplay=function(){
-        if(confirmado) return;
-        confirmado=true; tipoAtual="video";
-        mostrarVideo(); esconderAguardando(); iniciarVideo();
-    };
+    mediaVideo.onloadeddata = ativarVideo;
+    mediaVideo.oncanplay = ativarVideo;
 
-    mediaVideo.onerror=function(){
+    mediaVideo.onerror = function(){
         if(confirmado) return;
         tentarAudio(url);
     };
 }
 
 function tentarAudio(url){
-    var confirmado=false;
-    mediaAudio.src=url;
+    var confirmado = false;
+    mediaAudio.src = url;
     mediaAudio.load();
 
-    mediaAudio.oncanplay=function(){
+    mediaAudio.oncanplay = function(){
         if(confirmado) return;
-        confirmado=true; tipoAtual="audio";
-        esconderAguardando(); mediaAudio.play();
+        confirmado = true; 
+        tipoAtual = "audio";
+        esconderAguardando(); 
+        mediaAudio.play();
     };
 
-    mediaAudio.onerror=function(){
+    mediaAudio.onerror = function(){
         if(confirmado) return;
         tentarImagem(url);
     };
@@ -218,70 +230,79 @@ function tentarAudio(url){
 
 function tentarImagem(url){
     var img = new Image();
-    img.onload=function(){
-        tipoAtual="image"; mediaImage.src=url;
-        mostrarImagem(); esconderAguardando();
+    img.onload = function(){
+        tipoAtual = "image"; 
+        mediaImage.src = url;
+        mostrarImagem(); 
+        esconderAguardando();
     };
-    img.onerror=function(){ mostrarErro("Formato não suportado"); };
-    img.src=url;
+    img.onerror = function(){ mostrarErro("Formato não suportado"); };
+    img.src = url;
 }
 
 function esconderTodos(){
-    mediaVideo.style.display="none";
-    mediaAudio.style.display="none";
-    mediaImage.style.display="none";
+    mediaVideo.style.display = "none";
+    mediaAudio.style.display = "none";
+    mediaImage.style.display = "none";
 }
 
-function mostrarVideo(){ esconderTodos(); mediaVideo.style.display="block"; }
-function mostrarImagem(){ esconderTodos(); mediaImage.style.display="block"; }
+function mostrarVideo(){ esconderTodos(); mediaVideo.style.display = "block"; }
+function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
 
 function iniciarVideo(){
     var tentativa = mediaVideo.play();
     if(tentativa !== undefined){
-        tentativa.then(function(){ esconderAguardando(); })
-        .catch(function(){ setTimeout(iniciarVideo, 1000); });
+        tentativa.then(function(){ 
+            esconderAguardando(); 
+        }).catch(function(){ 
+            // Tenta novamente de forma limpa caso o navegador bloqueie o autoplay instantâneo
+            setTimeout(iniciarVideo, 500); 
+        });
     }
 }
 
-mediaVideo.onloadeddata=function(){ esconderAguardando(); };
-mediaVideo.onplaying=function(){ esconderAguardando(); };
-mediaVideo.onplay=function(){ esconderAguardando(); };
-mediaAudio.onplaying=function(){ esconderAguardando(); };
+// Eventos de estabilidade e suavidade de reprodução
+mediaVideo.onwaiting = function() { mostrarAguardando(); };
+mediaVideo.onplaying = function() { esconderAguardando(); };
+mediaVideo.onplay = function() { esconderAguardando(); };
+mediaAudio.onplaying = function() { esconderAguardando(); };
 
 // =====================================
-// BUSCAR SERVIDOR (ANTI-CACHE + LONG POLLING)
+// ⚡ LONG POLLING DE ALTA PRECISÃO (SEM ENGASGOS)
 // =====================================
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
-    // Adiciona timestamp (?t=...) para impedir que a TV guarde em cache o status
-    xhr.open("GET", "/status?t=" + new Date().getTime(), true);
+    xhr.open("GET", "/status?t=" + Date.now(), true);
 
-    xhr.onreadystatechange=function(){
-        if(xhr.readyState===4){
-            if(xhr.status===200){
+    xhr.onreadystatechange = function(){
+        if(xhr.readyState === 4){
+            if(xhr.status === 200){
                 try{
                     var dados = JSON.parse(xhr.responseText);
-                    dadosServidor=dados;
+                    dadosServidor = dados;
 
-                    var url="";
-                    if(dados.fila && dados.fila.length>0 && dados.fila[dados.atual]){
+                    var url = "";
+                    if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
                         url = dados.fila[dados.atual].url;
                     }
-                    if(!url && dados.video){ url=dados.video; }
+                    if(!url && dados.video){ url = dados.video; }
 
                     if(dados.ativo && url){
-                        if(url!==ultimaURL){
-                            ultimaURL=url;
+                        if(url !== ultimaURL){
+                            ultimaURL = url;
                             receberMidia(url);
                         }
                     } else if (!dados.ativo || (!dados.video && (!dados.fila || dados.fila.length === 0))) {
                         if(urlAtual !== ""){
-                            urlAtual = ""; ultimaURL = "";
-                            limparMidia(); esconderTodos(); mostrarAguardando();
+                            urlAtual = ""; 
+                            ultimaURL = "";
+                            limparMidia(); 
+                            esconderTodos(); 
+                            mostrarAguardando();
                         }
                     }
 
-                    // AÇÕES DO CONTROLE NO VÍDEO
+                    // AÇÕES DE CONTROLE EXECUTADAS COM PRECISÃO NA GPU/VÍDEO
                     if(tipoAtual === "video"){
                         if(dados.reproduzindo === false && !mediaVideo.paused){
                             mediaVideo.pause();
@@ -292,6 +313,7 @@ function verificarServidor(){
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
+                        // ⚡ Pulo fluido de 10s (Avançar / Voltar)
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
                             if(novoTempo < 0) novoTempo = 0;
@@ -303,28 +325,36 @@ function verificarServidor(){
                     }
                 }catch(e){}
             }
-            setTimeout(verificarServidor, 100);
+            
+            // Reconexão imediata super rápida para zerar a latência do controle
+            clearTimeout(pollTimeout);
+            pollTimeout = setTimeout(verificarServidor, 50);
         }
     };
 
-    xhr.onerror = function() { setTimeout(verificarServidor, 2000); };
+    xhr.onerror = function() { 
+        clearTimeout(pollTimeout);
+        pollTimeout = setTimeout(verificarServidor, 1500); 
+    };
     xhr.send();
 }
 
+// Inicia o motor de escuta
 verificarServidor();
 
-mediaVideo.onended=function(){ enviarComando("next"); };
+mediaVideo.onended = function(){ enviarComando("next"); };
 
 function enviarComando(acao){
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/controle", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.send(JSON.stringify({ acao:acao }));
+    xhr.send(JSON.stringify({ acao: acao }));
 }
 
+// Recuperação automática caso ocorra queda de stream
 function recuperarPlayer(){ if(urlAtual){ receberMidia(urlAtual); } }
-mediaVideo.onerror=function(){ setTimeout(recuperarPlayer, 3000); };
-mediaAudio.onerror=function(){ setTimeout(recuperarPlayer, 3000); };
+mediaVideo.onerror = function(){ setTimeout(recuperarPlayer, 2000); };
+mediaAudio.onerror = function(){ setTimeout(recuperarPlayer, 2000); };
 </script>
 
 </body>
