@@ -2,10 +2,14 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// 🟢 LIBERA A PASTA PUBLIC (Onde deve ficar o arquivo tv.html)
+app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -39,7 +43,7 @@ function getCurrentPosition() {
 }
 
 /**
- * Notifica clientes WebSocket (o segundo player/WebSoft)
+ * Notifica clientes WebSocket (Player Secundário / App)
  */
 function broadcastState() {
   const currentPos = getCurrentPosition();
@@ -59,7 +63,7 @@ function broadcastState() {
 }
 
 // =========================================================
-// ROTA GET /status (HTTP POLLING DA SMART TV)
+// ROTA GET /status (HTTP POLLING DA SMART TV E TV BOX)
 // =========================================================
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
@@ -150,10 +154,9 @@ app.post('/controle', (req, res) => {
 });
 
 // =========================================================
-// WEBSOCKET (PARA O SEGUNDO PLAYER / APP WEBSOFT)
+// WEBSOCKET (SEGUNDO PLAYER / APP WEBSOFT)
 // =========================================================
 wss.on('connection', (ws) => {
-  // Envia estado inicial ao conectar
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
     ...masterState,
@@ -179,8 +182,11 @@ wss.on('connection', (ws) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.send('Servidor X-Stream Live Central Online');
+// =========================================================
+// ROTA PRINCIPAL: ABRE O HTML DA TV E TV BOX DIRECT
+// =========================================================
+app.get(['/', '/tv'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'tv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
