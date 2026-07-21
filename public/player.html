@@ -7,6 +7,10 @@
 <title>X-Stream Universal Player</title>
 
 <style>
+/* =====================================
+   X-STREAM TV PLAYER
+   VISUAL COMPATÍVEL TV / WEBVIEW
+===================================== */
 html, body {
     margin:0; padding:0;
     width:100%; height:100%;
@@ -106,6 +110,12 @@ button, video, audio, img { outline:none; }
 </div>
 
 <script>
+// =====================================
+// X-STREAM PLAYER ENGINE
+// VERSÃO COMPATÍVEL TV / WEBVIEW
+// COM CURSOR TEXTO ISOLADO
+// =====================================
+
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
@@ -263,19 +273,32 @@ function verificarServidor(){
                         }
                     }
 
-                    // AÇÕES DO CONTROLE
+                    // AÇÕES DO CONTROLE NO VÍDEO
                     if(tipoAtual === "video"){
+                        // PLAY / PAUSE
                         if(dados.reproduzindo === false && !mediaVideo.paused){
                             mediaVideo.pause();
                         } else if(dados.reproduzindo === true && mediaVideo.paused){
                             mediaVideo.play();
                         }
+
+                        // VOLUME E MUTE
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
+
+                        // PULAR 10 SEGUNDOS (FORUM / REWIND)
+                        if(dados.seek && dados.seek !== 0){
+                            var novoTempo = mediaVideo.currentTime + dados.seek;
+                            if(novoTempo < 0) novoTempo = 0;
+                            if(novoTempo > mediaVideo.duration) novoTempo = mediaVideo.duration;
+
+                            mediaVideo.currentTime = novoTempo;
+                            enviarComando("zerar_seek");
+                        }
                     }
                 }catch(e){}
             }
-            // Assim que uma resposta chega, reconecta IMEDIATAMENTE sem delay
+            // Assim que a resposta chega, reconecta IMEDIATAMENTE (sem delay)
             setTimeout(verificarServidor, 100);
         }
     };
@@ -284,7 +307,7 @@ function verificarServidor(){
     xhr.send();
 }
 
-// Inicializa a escuta contínua
+// Inicializa a escuta
 verificarServidor();
 
 mediaVideo.onended=function(){ enviarComando("next"); };
