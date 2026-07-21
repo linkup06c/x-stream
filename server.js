@@ -8,18 +8,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Libera arquivos estáticos da pasta public
+// Libera arquivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Estado Mestre Central
+// Estado Mestre Central com suporte a Fila Circular
 let masterState = {
   video: null,          // URL do vídeo/áudio atual
   ativo: false,         // Transmissão ativa?
   playing: false,       // Rodando ou pausado?
-  reproduzindo: false,  // Compatibilidade com Smart TV
+  reproduzindo: false,  // Compatibilidade Smart TV
   currentTime: 0,       // Tempo em segundos
   updatedAt: Date.now(),// Timestamp de sincronização
   volume: 100,
@@ -27,10 +27,11 @@ let masterState = {
   seek: 0,
   ultimoComando: null,
   comandoId: 0,
-  fila: [],
-  atual: 0
+  fila: [],             // Fila de mídias [{ url: "..." }]
+  atual: 0              // Índice da mídia atual
 };
 
+// Calcula a posição real do vídeo baseada no tempo decorrido no servidor
 function getCurrentPosition() {
   if (!masterState.playing || !masterState.video) {
     return masterState.currentTime;
@@ -39,7 +40,7 @@ function getCurrentPosition() {
   return masterState.currentTime + elapsedSeconds;
 }
 
-// Dispara atualizações via WebSocket para clientes compatíveis
+// Transmite o estado mestre para todos os clientes WebSocket
 function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
   const payload = JSON.stringify({
@@ -58,6 +59,33 @@ function broadcastState(acaoExtra = null) {
   });
 }
 
+// Avança para a próxima mídia (Looping Infinito)
+function proximaMidia() {
+  if (!masterState.fila || masterState.fila.length === 0) return;
+
+  // Se chegou ao fim, volta para a primeira (0)
+  masterState.atual = (masterState.atual + 1) % masterState.fila.length;
+  masterState.video = masterState.fila[masterState.atual].url;
+  masterState.currentTime = 0;
+  masterState.playing = true;
+  masterState.reproduzindo = true;
+  masterState.updatedAt = Date.now();
+  broadcastState("next");
+}
+
+// Volta para a mídia anterior (Looping Infinito)
+function midiaAnterior() {
+  if (!masterState.fila || masterState.fila.length === 0) return;
+
+  masterState.atual = (masterState.atual - 1 + masterState.fila.length) % masterState.fila.length;
+  masterState.video = masterState.fila[masterState.atual].url;
+  masterState.currentTime = 0;
+  masterState.playing = true;
+  masterState.reproduzindo = true;
+  masterState.updatedAt = Date.now();
+  broadcastState("prev");
+}
+
 // Rota HTTP Polling usada pela Smart TV
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
@@ -71,11 +99,24 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Envio de nova mídia
+// Envio de Mídia / Adição na Fila
 app.post('/enviar', (req, res) => {
-  const url = req.body.url;
+  const { url, limparFila } = req.body;
+
   if (url) {
-    masterState.video = url;
+    if (limparFila) {
+      masterState.fila = [{ url: url }];
+      masterState.atual = 0;
+    } else {
+      // Adiciona à fila existente
+      masterState.fila.push({ url: url });
+      // Se não havia mídia tocando, começa pela recém-adicionada
+      if (!masterState.video) {
+        masterState.atual = masterState.fila.length - 1;
+      }
+    }
+
+    masterState.video = masterState.fila[masterState.atual].url;
     masterState.ativo = true;
     masterState.playing = true;
     masterState.reproduzindo = true;
@@ -83,31 +124,46 @@ app.post('/enviar', (req, res) => {
     masterState.updatedAt = Date.now();
     broadcastState("play");
   }
+
   res.json({ success: true, state: masterState });
 });
 
-// Recepção de comandos do Controle Remoto
+// Recepção de Comandos do Controle Remoto
 app.post('/controle', (req, res) => {
-  const acao = req.body.acao;
+  const { acao, url } = req.body;
 
   if (acao) {
     switch (acao) {
       case 'play':
       case 'resume':
-        if (!masterState.video) break;
-        // Alterna (toggle) entre play e pause se clicado consecutivamente
-        masterState.playing = !masterState.playing;
-        masterState.reproduzindo = masterState.playing;
-        if (!masterState.playing) {
-          masterState.currentTime = getCurrentPosition();
+        if (!masterState.video && masterState.fila.length > 0) {
+          masterState.video = masterState.fila[masterState.atual].url;
         }
-        masterState.updatedAt = Date.now();
+        if (masterState.video) {
+          masterState.playing = true;
+          masterState.reproduzindo = true;
+          masterState.updatedAt = Date.now();
+        }
         break;
 
       case 'pause':
         masterState.currentTime = getCurrentPosition();
         masterState.playing = false;
         masterState.reproduzindo = false;
+        masterState.updatedAt = Date.now();
+        break;
+
+      case 'toggle_play':
+        if (!masterState.video && masterState.fila.length > 0) {
+          masterState.video = masterState.fila[masterState.atual].url;
+          masterState.playing = true;
+        } else if (masterState.video) {
+          masterState.playing = !masterState.playing;
+          if (!masterState.playing) {
+            masterState.currentTime = getCurrentPosition();
+          }
+        }
+        masterState.reproduzindo = masterState.playing;
         masterState.updatedAt = Date.now();
         break;
 
@@ -119,6 +175,8 @@ app.post('/controle', (req, res) => {
         masterState.playing = false;
         masterState.reproduzindo = false;
         masterState.currentTime = 0;
+        masterState.fila = [];
+        masterState.atual = 0;
         masterState.updatedAt = Date.now();
         break;
 
@@ -139,26 +197,12 @@ app.post('/controle', (req, res) => {
         break;
 
       case 'next':
-        if (masterState.fila && masterState.fila.length > 0 && masterState.atual < masterState.fila.length - 1) {
-          masterState.atual++;
-          masterState.video = masterState.fila[masterState.atual].url;
-          masterState.currentTime = 0;
-          masterState.playing = true;
-          masterState.reproduzindo = true;
-          masterState.updatedAt = Date.now();
-        }
+        proximaMidia();
         break;
 
       case 'prev':
       case 'previous':
-        if (masterState.fila && masterState.fila.length > 0 && masterState.atual > 0) {
-          masterState.atual--;
-          masterState.video = masterState.fila[masterState.atual].url;
-          masterState.currentTime = 0;
-          masterState.playing = true;
-          masterState.reproduzindo = true;
-          masterState.updatedAt = Date.now();
-        }
+        midiaAnterior();
         break;
     }
 
@@ -170,7 +214,7 @@ app.post('/controle', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// WebSocket para o Player Secundário / WebSoft
+// WebSocket para os Players
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
@@ -189,12 +233,15 @@ wss.on('connection', (ws) => {
           currentTime: getCurrentPosition(),
           updatedAt: Date.now()
         }));
+      } else if (data.acao === 'next') {
+        proximaMidia();
+      } else if (data.acao === 'prev') {
+        midiaAnterior();
       }
     } catch(e) {}
   });
 });
 
-// Rota principal e atalhos para abrir o arquivo smart-tv.html
 app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'smart-tv.html'));
 });
