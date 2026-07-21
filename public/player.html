@@ -8,8 +8,7 @@
 
 <style>
 /* =====================================
-   X-STREAM TV PLAYER
-   VISUAL COMPATÍVEL TV / WEBVIEW
+   X-STREAM TV PLAYER - OTIMIZADO
 ===================================== */
 html, body {
     margin:0; padding:0;
@@ -91,8 +90,9 @@ button, video, audio, img { outline:none; }
 
 <div id="cursorLayer">Texto de teste invisível</div>
 
-<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto"></video>
-<audio id="mediaAudio" autoplay preload="auto"></audio>
+<!-- PRELOAD METADATA PARA ECONOMIZAR MEMÓRIA E BANDA NA TV -->
+<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="metadata" crossorigin="anonymous"></video>
+<audio id="mediaAudio" autoplay preload="metadata"></audio>
 <img id="mediaImage">
 
 <div id="audioInfo">
@@ -110,12 +110,6 @@ button, video, audio, img { outline:none; }
 </div>
 
 <script>
-// =====================================
-// X-STREAM PLAYER ENGINE
-// VERSÃO COMPATÍVEL TV / WEBVIEW
-// COM CURSOR TEXTO ISOLADO
-// =====================================
-
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
@@ -155,10 +149,23 @@ function mostrarErro(msg){
     }
 }
 
+// LIMPEZA PROFUNDA DE MEMÓRIA E BUFFER DA TV
 function limparMidia(){
-    try{ mediaVideo.pause(); mediaVideo.removeAttribute("src"); mediaVideo.load(); }catch(e){}
-    try{ mediaAudio.pause(); mediaAudio.removeAttribute("src"); mediaAudio.load(); }catch(e){}
-    try{ mediaImage.removeAttribute("src"); }catch(e){}
+    try {
+        mediaVideo.pause();
+        mediaVideo.removeAttribute("src");
+        mediaVideo.load(); // Libera o buffer da RAM da TV
+    } catch(e){}
+
+    try {
+        mediaAudio.pause();
+        mediaAudio.removeAttribute("src");
+        mediaAudio.load();
+    } catch(e){}
+
+    try {
+        mediaImage.removeAttribute("src");
+    } catch(e){}
 }
 
 function receberMidia(url){
@@ -242,11 +249,12 @@ mediaVideo.onplay=function(){ esconderAguardando(); };
 mediaAudio.onplaying=function(){ esconderAguardando(); };
 
 // =====================================
-// BUSCAR SERVIDOR COM LONG POLLING INSTANTÂNEO
+// BUSCAR SERVIDOR (ANTI-CACHE + LONG POLLING)
 // =====================================
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/status", true);
+    // Adiciona timestamp (?t=...) para impedir que a TV guarde em cache o status
+    xhr.open("GET", "/status?t=" + new Date().getTime(), true);
 
     xhr.onreadystatechange=function(){
         if(xhr.readyState===4){
@@ -275,18 +283,15 @@ function verificarServidor(){
 
                     // AÇÕES DO CONTROLE NO VÍDEO
                     if(tipoAtual === "video"){
-                        // PLAY / PAUSE
                         if(dados.reproduzindo === false && !mediaVideo.paused){
                             mediaVideo.pause();
                         } else if(dados.reproduzindo === true && mediaVideo.paused){
                             mediaVideo.play();
                         }
 
-                        // VOLUME E MUTE
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
-                        // PULAR 10 SEGUNDOS (FORUM / REWIND)
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
                             if(novoTempo < 0) novoTempo = 0;
@@ -298,7 +303,6 @@ function verificarServidor(){
                     }
                 }catch(e){}
             }
-            // Assim que a resposta chega, reconecta IMEDIATAMENTE (sem delay)
             setTimeout(verificarServidor, 100);
         }
     };
@@ -307,7 +311,6 @@ function verificarServidor(){
     xhr.send();
 }
 
-// Inicializa a escuta
 verificarServidor();
 
 mediaVideo.onended=function(){ enviarComando("next"); };
