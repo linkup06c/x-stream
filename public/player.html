@@ -4,12 +4,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>X-Stream Universal Player - Ultra Fluid</title>
+<title>X-Stream Engine Ultra Supremo</title>
+
+<!-- SUPORTE A STREAMING HLS (M3U8 / LIVES / IPTV) -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <style>
 /* =====================================
-   X-STREAM TV PLAYER - ULTRA FLUIDO
-   OTIMIZADO PARA HARDWARE DE SMART TV
+   X-STREAM ULTRA SUPREMO - TV ENGINE
+   ACELERADO VIA GPU + ZERO LATÊNCIA
 ===================================== */
 html, body {
     margin: 0; padding: 0;
@@ -18,7 +21,6 @@ html, body {
     overflow: hidden;
     font-family: Arial, Helvetica, sans-serif;
     color: white;
-    /* Desativa comportamentos indesejados de toque/scroll */
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
@@ -31,9 +33,9 @@ html, body {
     object-fit: contain;
     display: none; 
     z-index: 10;
-    /* ⚡ ACELERAÇÃO POR HARDWARE (GPU DA TV) */
     transform: translate3d(0, 0, 0);
     will-change: transform;
+    backface-visibility: hidden;
 }
 
 #mediaAudio { display: none; }
@@ -52,13 +54,14 @@ html, body {
     background: #000; display: flex;
     align-items: center; justify-content: center;
     flex-direction: column; font-size: 28px; z-index: 5000;
-    will-change: opacity;
 }
 
 .loader {
-    width: 55px; height: 55px; border-radius: 50%;
-    border: 6px solid #333; border-top-color: #fff;
-    animation: spin 0.8s linear infinite; margin-bottom: 25px;
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 6px solid #222; border-top-color: #00e5ff;
+    animation: spin 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; 
+    margin-bottom: 25px;
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
 }
 
 @keyframes spin {
@@ -73,8 +76,8 @@ html, body {
     flex-direction: column; text-align: center; z-index: 20000;
 }
 
-#errorTitle { font-size: 40px; margin-bottom: 20px; }
-#errorMessage { font-size: 22px; max-width: 80%; }
+#errorTitle { font-size: 40px; color: #ff3333; margin-bottom: 20px; }
+#errorMessage { font-size: 22px; max-width: 80%; color: #ccc; }
 
 #audioInfo {
     position: fixed; top: 0; left: 0;
@@ -83,10 +86,9 @@ html, body {
     flex-direction: column; z-index: 20;
 }
 
-#audioInfo:before { content: "♫"; font-size: 120px; margin-bottom: 30px; }
+#audioInfo:before { content: "♫"; font-size: 120px; color: #00e5ff; margin-bottom: 30px; }
 #audioTitle { font-size: 32px; font-weight: bold; }
 
-/* Cursor invisível para manter o foco limpo no Sraf Browser */
 #cursorLayer {
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%; z-index: 99999;
@@ -100,7 +102,6 @@ html, body {
 
 <div id="cursorLayer">Texto de teste invisível</div>
 
-<!-- Otimizado com atributos de reprodução fluida para navegadores webkit/tv -->
 <video id="mediaVideo" autoplay playsinline webkit-playsinline preload="metadata" crossorigin="anonymous"></video>
 <audio id="mediaAudio" autoplay preload="metadata"></audio>
 <img id="mediaImage">
@@ -116,10 +117,13 @@ html, body {
 
 <div id="errorBox">
     <div id="errorTitle">Erro</div>
-    <div id="errorMessage">Não foi possível reproduzir.</div>
+    <div id="errorMessage">Não foi possível reproduzir este formato.</div>
 </div>
 
 <script>
+// =====================================
+// X-STREAM ENGINE ULTRA SUPREMO
+// =====================================
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
@@ -129,25 +133,23 @@ var urlAtual = "";
 var ultimaURL = "";
 var dadosServidor = {};
 var pollTimeout = null;
+var hlsPlayer = null;
 
-// Isola o foco e o cursor
 (function(){
     try {
         var cursor = document.getElementById("cursorLayer");
-        if(cursor){
-            cursor.style.cursor = "text";
-        }
+        if(cursor) cursor.style.cursor = "text";
     }catch(e){}
 })();
 
 function esconderAguardando(){
     var box = document.getElementById("waiting");
-    if(box && box.style.display !== "none"){ box.style.display = "none"; }
+    if(box && box.style.display !== "none") box.style.display = "none";
 }
 
 function mostrarAguardando(){
     var box = document.getElementById("waiting");
-    if(box && box.style.display !== "flex"){ box.style.display = "flex"; }
+    if(box && box.style.display !== "flex") box.style.display = "flex";
 }
 
 function mostrarErro(msg){
@@ -155,26 +157,33 @@ function mostrarErro(msg){
     if(box){
         box.style.display = "flex";
         var texto = document.getElementById("errorMessage");
-        if(texto){ texto.innerHTML = msg; }
+        if(texto) texto.innerHTML = msg;
     }
 }
 
-// ⚡ LIMPEZA CIRÚRGICA DE MEMÓRIA (Evita vazamento de RAM na TV)
+// ⚡ GARBAGE COLLECTION PROFUNDO (Libera RAM instantaneamente)
 function limparMidia(){
+    if (hlsPlayer) {
+        try {
+            hlsPlayer.destroy();
+            hlsPlayer = null;
+        } catch(e){}
+    }
+
     try {
         mediaVideo.pause();
-        mediaVideo.src = "";
+        mediaVideo.removeAttribute("src");
         mediaVideo.load();
     } catch(e){}
 
     try {
         mediaAudio.pause();
-        mediaAudio.src = "";
+        mediaAudio.removeAttribute("src");
         mediaAudio.load();
     } catch(e){}
 
     try {
-        mediaImage.src = "";
+        mediaImage.removeAttribute("src");
     } catch(e){}
 }
 
@@ -183,7 +192,45 @@ function receberMidia(url){
     urlAtual = url;
     limparMidia();
     mostrarAguardando();
-    tentarVideo(url);
+
+    // Deteção inteligente de formato
+    var urlLimpa = url.split('?')[0].toLowerCase();
+    
+    if (urlLimpa.endsWith('.m3u8')) {
+        tentarHLS(url);
+    } else {
+        tentarVideo(url);
+    }
+}
+
+// SUPORTE A HLS / M3U8 / LIVES / IPTV
+function tentarHLS(url) {
+    if (Hls.isSupported()) {
+        hlsPlayer = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 30
+        });
+        hlsPlayer.loadSource(url);
+        hlsPlayer.attachMedia(mediaVideo);
+        hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+            tipoAtual = "video";
+            mostrarVideo();
+            esconderAguardando();
+            iniciarVideo();
+        });
+        hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
+            if (data.fatal) {
+                tentarVideo(url); // Fallback se HLS falhar
+            }
+        });
+    } else if (mediaVideo.canPlayType('application/vnd.apple.mpegurl')) {
+        // Suporte nativo para Safari/Webkit antigos
+        mediaVideo.src = url;
+        tentarVideo(url);
+    } else {
+        tentarVideo(url);
+    }
 }
 
 function tentarVideo(url){
@@ -236,7 +283,7 @@ function tentarImagem(url){
         mostrarImagem(); 
         esconderAguardando();
     };
-    img.onerror = function(){ mostrarErro("Formato não suportado"); };
+    img.onerror = function(){ mostrarErro("Formato ou link não suportado"); };
     img.src = url;
 }
 
@@ -255,20 +302,18 @@ function iniciarVideo(){
         tentativa.then(function(){ 
             esconderAguardando(); 
         }).catch(function(){ 
-            // Tenta novamente de forma limpa caso o navegador bloqueie o autoplay instantâneo
-            setTimeout(iniciarVideo, 500); 
+            setTimeout(iniciarVideo, 400); 
         });
     }
 }
 
-// Eventos de estabilidade e suavidade de reprodução
 mediaVideo.onwaiting = function() { mostrarAguardando(); };
 mediaVideo.onplaying = function() { esconderAguardando(); };
 mediaVideo.onplay = function() { esconderAguardando(); };
 mediaAudio.onplaying = function() { esconderAguardando(); };
 
 // =====================================
-// ⚡ LONG POLLING DE ALTA PRECISÃO (SEM ENGASGOS)
+// ⚡ MOTOR DE LONG POLLING ULTRA-RESILIENTE (50ms)
 // =====================================
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
@@ -302,7 +347,7 @@ function verificarServidor(){
                         }
                     }
 
-                    // AÇÕES DE CONTROLE EXECUTADAS COM PRECISÃO NA GPU/VÍDEO
+                    // CONTROLE DE MIDIA COM ALTA PRECISÃO
                     if(tipoAtual === "video"){
                         if(dados.reproduzindo === false && !mediaVideo.paused){
                             mediaVideo.pause();
@@ -313,7 +358,6 @@ function verificarServidor(){
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
-                        // ⚡ Pulo fluido de 10s (Avançar / Voltar)
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
                             if(novoTempo < 0) novoTempo = 0;
@@ -326,7 +370,6 @@ function verificarServidor(){
                 }catch(e){}
             }
             
-            // Reconexão imediata super rápida para zerar a latência do controle
             clearTimeout(pollTimeout);
             pollTimeout = setTimeout(verificarServidor, 50);
         }
@@ -334,12 +377,11 @@ function verificarServidor(){
 
     xhr.onerror = function() { 
         clearTimeout(pollTimeout);
-        pollTimeout = setTimeout(verificarServidor, 1500); 
+        pollTimeout = setTimeout(verificarServidor, 1000); 
     };
     xhr.send();
 }
 
-// Inicia o motor de escuta
 verificarServidor();
 
 mediaVideo.onended = function(){ enviarComando("next"); };
@@ -351,10 +393,9 @@ function enviarComando(acao){
     xhr.send(JSON.stringify({ acao: acao }));
 }
 
-// Recuperação automática caso ocorra queda de stream
 function recuperarPlayer(){ if(urlAtual){ receberMidia(urlAtual); } }
-mediaVideo.onerror = function(){ setTimeout(recuperarPlayer, 2000); };
-mediaAudio.onerror = function(){ setTimeout(recuperarPlayer, 2000); };
+mediaVideo.onerror = function(){ setTimeout(recuperarPlayer, 1500); };
+mediaAudio.onerror = function(){ setTimeout(recuperarPlayer, 1500); };
 </script>
 
 </body>
