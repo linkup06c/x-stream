@@ -10,7 +10,7 @@ app.use(express.json());
 // Serve os arquivos da pasta 'public' (onde fica o player.html e o controle.html)
 app.use(express.static(path.join(__dirname, "public")));
 
-// =====================================
+// =====================================b
 // ESTADO DO X-STREAM
 // =====================================
 let transmissao = {
