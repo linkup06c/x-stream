@@ -76,7 +76,7 @@ app.post('/enviar', (req, res) => {
   const url = req.body.url;
   if (url) {
     masterState.fila.push({ url: url });
-    
+
     // Se nada estiver tocando, inicia imediatamente a nova mídia
     if (!masterState.video || !masterState.ativo) {
       masterState.atual = masterState.fila.length - 1;
@@ -98,8 +98,8 @@ app.post('/controle', (req, res) => {
 
   if (acao) {
     switch (acao) {
-      case 'play':
-      case 'resume':
+      // Alterna entre play e pause (ideal para um único botão no controle)
+      case 'toggle_play':
         if (!masterState.video) break;
         masterState.playing = !masterState.playing;
         masterState.reproduzindo = masterState.playing;
@@ -109,15 +109,24 @@ app.post('/controle', (req, res) => {
         masterState.updatedAt = Date.now();
         break;
 
+      // Força o Play
+      case 'play':
+        if (!masterState.video || masterState.playing) break;
+        masterState.playing = true;
+        masterState.reproduzindo = true;
+        masterState.updatedAt = Date.now();
+        break;
+
+      // Força o Pause
       case 'pause':
+        if (!masterState.playing) break;
         masterState.currentTime = getCurrentPosition();
         masterState.playing = false;
         masterState.reproduzindo = false;
         masterState.updatedAt = Date.now();
         break;
 
-      case 'power':
-      case 'clear':
+      // Para totalmente a reprodução e limpa a fila (Antigo 'power'/'clear')
       case 'stop':
         masterState.video = null;
         masterState.ativo = false;
@@ -129,33 +138,33 @@ app.post('/controle', (req, res) => {
         masterState.updatedAt = Date.now();
         break;
 
-      case 'mute':
+      case 'toggle_mute':
         masterState.mudo = !masterState.mudo;
         break;
 
-      case 'vol_up':
+      case 'volume_up':
         masterState.volume = Math.min(100, masterState.volume + 10);
         break;
 
-      case 'vol_down':
+      case 'volume_down':
         masterState.volume = Math.max(0, masterState.volume - 10);
         break;
 
-      // Avançar e Voltar 15 Segundos
-      case 'forward_15':
+      // Avançar e Voltar tempo específico
+      case 'seek_forward':
         masterState.seek = 15;
         break;
 
-      case 'rewind_15':
+      case 'seek_backward':
         masterState.seek = -15;
         break;
 
-      case 'zerar_seek':
+      case 'seek_reset':
         masterState.seek = 0;
         break;
 
-      // Avançar Fila com Ciclo Infinito (Se chegar ao fim, volta pro 1º)
-      case 'next':
+      // Navegação na Fila
+      case 'next_track':
         if (masterState.fila && masterState.fila.length > 0) {
           if (masterState.atual < masterState.fila.length - 1) {
             masterState.atual++;
@@ -170,9 +179,7 @@ app.post('/controle', (req, res) => {
         }
         break;
 
-      // Voltar Fila com Ciclo
-      case 'prev':
-      case 'previous':
+      case 'prev_track':
         if (masterState.fila && masterState.fila.length > 0) {
           if (masterState.atual > 0) {
             masterState.atual--;
@@ -187,7 +194,7 @@ app.post('/controle', (req, res) => {
         }
         break;
 
-      // Comandos Navegacionais (D-PAD / Teclado Smart TV)
+      // Comandos Navegacionais de Interface (D-PAD / Teclado Smart TV)
       case 'up':
       case 'down':
       case 'left':
