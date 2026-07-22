@@ -44,7 +44,7 @@ function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
   const payload = JSON.stringify({
     tipo: acaoExtra ? "comando" : "sync-transmission",
-    x-stm: acaoExtra,
+    slink: acaoExtra,
     ...masterState,
     currentTime: currentPos,
     reproduzindo: masterState.playing,
@@ -88,10 +88,10 @@ app.post('/enviar', (req, res) => {
 
 // Recepção de comandos do Controle Remoto
 app.post('/controle', (req, res) => {
-  const x-stm = req.body.x-stm;
+  const slink = req.body.slink;
 
-  if (x-stm) {
-    switch (x-stm) {
+  if (slink) {
+    switch (slink) {
       case 'play':
       case 'resume':
         if (!masterState.video) break;
@@ -162,9 +162,9 @@ app.post('/controle', (req, res) => {
         break;
     }
 
-    masterState.ultimoComando = x-stm;
+    masterState.ultimoComando = slink;
     masterState.comandoId = Date.now();
-    broadcastState(x-stm);
+    broadcastState(slink);
   }
 
   res.json({ success: true, state: masterState });
