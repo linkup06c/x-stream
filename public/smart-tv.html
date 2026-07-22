@@ -20,7 +20,7 @@ html, body {
     color: #fff;
     -webkit-user-select: none;
     user-select: none;
-    outline: none; /* Remove borda de foco visual */
+    outline: none;
 }
 
 #mediaVideo, #mediaAudio, #mediaImage {
@@ -35,7 +35,7 @@ html, body {
 }
 
 #mediaVideo { z-index: 10; }
-#mediaAudio { z-index: 12; background: #111; } /* Tela preta elegante para reprodução de áudio puro */
+#mediaAudio { z-index: 12; background: #111; }
 #mediaImage { z-index: 15; }
 
 /* INDICADOR DISCRETO LEVE */
@@ -114,15 +114,12 @@ var wsConnection = null;
 var ultimoComandoIdProcessado = 0;
 var pingInterval = null;
 
-// GARANTE FOCO PERMANENTE NA TV PARA O CONTROLE FUNCIONAR
 function garantirFoco() {
-    if(appBody) {
-        appBody.focus();
-    }
+    if(appBody) { appBody.focus(); }
 }
 window.onload = garantirFoco;
 document.addEventListener("click", garantirFoco);
-setInterval(garantirFoco, 3000); // Reforça o foco a cada 3s caso o navegador da TV tente roubá-lo
+setInterval(garantirFoco, 3000);
 
 function showDebug(msg) {
     keyDebug.innerText = msg;
@@ -150,7 +147,6 @@ function mostrarErro(msg){
     }
 }
 
-// LIMPEZA PROFUNDA DE RAM E RECURSOS DE MÍDIA
 function limparMidia(){
     atualizarStatus(false);
 
@@ -181,32 +177,24 @@ function limparMidia(){
     } catch(e){}
 }
 
-// SELETOR UNIVERSAL DE MÍDIA (VÍDEO, ÁUDIO, IMAGEM)
 function receberMidia(url, tempoInicial){
-    if(!url || url === urlAtual) return;
-    urlAtual = url;
-    limparMidia();
+    if(!url) return;
+    if(url !== urlAtual) {
+        urlAtual = url;
+        limparMidia();
+    }
 
     var urlLimpa = url.split('?')[0].toLowerCase();
 
-    // Verificação de Imagens (JPG, PNG, GIF, WEBP, BMP, SVG)
     if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(urlLimpa)) {
         iniciarImagem(url);
-    } 
-    // Verificação de Áudios (MP3, AAC, WAV, OGG, FLAC, M4A, WMA)
-    else if (/\.(mp3|aac|wav|ogg|flac|m4a|wma)$/i.test(urlLimpa)) {
+    } else if (/\.(mp3|aac|wav|ogg|flac|m4a|wma)$/i.test(urlLimpa)) {
         iniciarAudio(url);
-    } 
-    // Streams HLS (.m3u8)
-    else if (urlLimpa.endsWith('.m3u8')) {
+    } else if (urlLimpa.endsWith('.m3u8')) {
         iniciarHLS(url, tempoInicial);
-    } 
-    // Streams DASH (.mpd)
-    else if (urlLimpa.endsWith('.mpd')) {
+    } else if (urlLimpa.endsWith('.mpd')) {
         iniciarDASH(url, tempoInicial);
-    } 
-    // Vídeos Padrão (MP4, WebM, MKV, MOV, etc.)
-    else {
+    } else {
         iniciarVideoPadrao(url, tempoInicial);
     }
 }
@@ -256,41 +244,25 @@ function iniciarDASH(url, tempoInicial) {
 }
 
 function iniciarVideoPadrao(url, tempoInicial){
-    var confirmado = false;
-    mediaVideo.src = url;
-    mediaVideo.load();
-
-    function ativar(){
-        if(confirmado) return;
-        confirmado = true;
-        tipoAtual = "video";
-        mostrarVideo();
-        executarPlayComTempo(tempoInicial);
+    if(mediaVideo.src !== url) {
+        mediaVideo.src = url;
+        mediaVideo.load();
     }
-
-    mediaVideo.onloadeddata = ativar;
-    mediaVideo.oncanplay = ativar;
-    mediaVideo.onerror = function(){
-        if(!confirmado) iniciarAudio(url);
-    };
+    tipoAtual = "video";
+    mostrarVideo();
+    executarPlayComTempo(tempoInicial);
 }
 
 function iniciarAudio(url){
-    var confirmado = false;
-    mediaAudio.src = url;
-    mediaAudio.load();
-    mediaAudio.oncanplay = function(){
-        if(confirmado) return;
-        confirmado = true;
-        tipoAtual = "audio";
-        mostrarAudio();
-        mediaAudio.play().then(function(){
-            atualizarStatus(true);
-        }).catch(function(){});
-    };
-    mediaAudio.onerror = function(){
-        if(!confirmado) iniciarImagem(url);
-    };
+    if(mediaAudio.src !== url) {
+        mediaAudio.src = url;
+        mediaAudio.load();
+    }
+    tipoAtual = "audio";
+    mostrarAudio();
+    mediaAudio.play().then(function(){
+        atualizarStatus(true);
+    }).catch(function(){});
 }
 
 function iniciarImagem(url){
@@ -321,70 +293,73 @@ function mostrarAudio(){ esconderTodos(); mediaAudio.style.display = "block"; }
 function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
 
 function executarPlayComTempo(tempoInicial){
-    if(tempoInicial && tempoInicial > 0){
+    if(tempoInicial && tempoInicial > 0 && Math.abs(mediaVideo.currentTime - tempoInicial) > 1.5){
         try { mediaVideo.currentTime = Number(tempoInicial); } catch(e){}
     }
-    var p = mediaVideo.play();
-    if(p !== undefined){
-        p.then(function(){
-            atualizarStatus(true);
-        }).catch(function(){
-            setTimeout(function(){ executarPlayComTempo(tempoInicial); }, 400);
-        });
-    }
+    mediaVideo.play().then(function(){
+        atualizarStatus(true);
+    }).catch(function(){});
 }
 
-mediaVideo.onplaying = function() { atualizarStatus(true); };
-mediaVideo.onpause = function() { atualizarStatus(false); };
 mediaVideo.onended = function(){ enviarComando("next_track"); };
-
-mediaAudio.onplaying = function() { atualizarStatus(true); };
-mediaAudio.onpause = function() { atualizarStatus(false); };
 mediaAudio.onended = function(){ enviarComando("next_track"); };
 
 // ==========================================
-// PROCESSAMENTO DO ESTADO DO SERVIDOR (LÓGICA ORIGINAL RESTAURADA)
+// PROCESSAMENTO BLINDADO DO ESTADO DO SERVIDOR
 // ==========================================
 function processarEstadoServidor(dados) {
+    if (!dados) return;
+
     var url = "";
     if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
         url = dados.fila[dados.atual].url;
     }
     if(!url && dados.video){ url = dados.video; }
 
-    if((dados.ativo || dados.playing !== false) && url){
-        if(url !== ultimaURL){
-            ultimaURL = url;
-            receberMidia(url, dados.currentTime || 0);
-        }
-    } else if (!dados.ativo && !dados.playing && !dados.video) {
-        if(urlAtual !== ""){
-            urlAtual = ""; 
+    // Se a transmissão estiver inativa, sem URL ou fila zerada -> Limpa e exibe o Standby nativo
+    if (!dados.ativo || !url || (dados.fila && dados.fila.length === 0 && !dados.video)) {
+        if (urlAtual !== "") {
+            urlAtual = "";
             ultimaURL = "";
             limparMidia();
             esconderTodos();
             atualizarStatus(false);
         }
+        return;
+    }
+
+    // Se mudou de mídia
+    if(url !== ultimaURL){
+        ultimaURL = url;
+        receberMidia(url, dados.currentTime || 0);
     }
 
     var midiaAtiva = (tipoAtual === "audio") ? mediaAudio : mediaVideo;
     if(midiaAtiva && tipoAtual !== "image"){
         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
-        if(isPlaying === false && !midiaAtiva.paused){
-            midiaAtiva.pause();
-        } else if(isPlaying === true && midiaAtiva.paused){
-            midiaAtiva.play().catch(function(){});
+        // CONTROLE DE PLAY / PAUSE SEM VOLTAR PARA TRÁS
+        if(isPlaying === false){
+            if(!midiaAtiva.paused) {
+                midiaAtiva.pause();
+            }
+        } else if(isPlaying === true){
+            if(midiaAtiva.paused) {
+                midiaAtiva.play().catch(function(){});
+            }
         }
 
         if(dados.volume !== undefined){ midiaAtiva.volume = dados.volume / 100; }
         if(dados.mudo !== undefined){ midiaAtiva.muted = dados.mudo; }
 
-        if(dados.seek && dados.seek !== 0 && dados.comandoId !== ultimoComandoIdProcessado){
+        // Sincronização de Seek correta (se disparada por comando)
+        if(dados.comandoId && dados.comandoId !== ultimoComandoIdProcessado){
             ultimoComandoIdProcessado = dados.comandoId;
-            var novoTempo = midiaAtiva.currentTime + dados.seek;
-            midiaAtiva.currentTime = Math.max(0, Math.min(novoTempo, midiaAtiva.duration || 0));
-            enviarComando("seek_reset"); // Restaurado exatamente como no original
+            if(dados.seek && dados.seek !== 0) {
+                var novoTempo = midiaAtiva.currentTime + dados.seek;
+                midiaAtiva.currentTime = Math.max(0, Math.min(novoTempo, midiaAtiva.duration || 0));
+                enviarComando("seek_reset");
+            }
         }
     }
 
@@ -436,48 +411,48 @@ function enviarComando(acao){
 }
 
 // ==========================================
-// CONTROLE REMOTO DA TV - ESCUTA GLOBAL BLINDADA
+// CONTROLE REMOTO DA TV
 // ==========================================
 window.addEventListener("keydown", function(e) {
-    garantirFoco(); // Força o foco em cada toque no controle
+    garantirFoco();
     var key = e.keyCode || e.which;
     var acao = null;
     var midiaAtiva = (tipoAtual === "audio") ? mediaAudio : mediaVideo;
 
     switch(key) {
-        case 13:   // OK / Enter -> Toggle Play/Pause imediato
+        case 13:   // OK / Enter
             acao = "toggle_play";
             if(midiaAtiva && tipoAtual !== "image"){
                 if(midiaAtiva.paused) midiaAtiva.play().catch(function(){});
                 else midiaAtiva.pause();
             }
             break;
-        case 37:   // Seta Esquerda -> Recuar 15s instantâneo
+        case 37:   // Seta Esquerda
             acao = "seek_backward";
             if(midiaAtiva && tipoAtual !== "image") midiaAtiva.currentTime = Math.max(0, midiaAtiva.currentTime - 15);
             break;
-        case 39:   // Seta Direita -> Avançar 15s instantâneo
+        case 39:   // Seta Direita
             acao = "seek_forward";
             if(midiaAtiva && tipoAtual !== "image") midiaAtiva.currentTime = Math.min(midiaAtiva.duration || 0, midiaAtiva.currentTime + 15);
             break;
-        case 38:   // Seta Cima -> Volume Up
+        case 38:   // Seta Cima
             acao = "volume_up";
             break;
-        case 40:   // Seta Baixo -> Volume Down
+        case 40:   // Seta Baixo
             acao = "volume_down";
             break;
-        case 8:     // Backspace
-        case 27:    // Esc
-        case 10009: // Sraf/Tizen Back
-        case 461:   // LG Back
+        case 8:     
+        case 27:    
+        case 10009: 
+        case 461:   
             acao = "stop";
             limparMidia();
             esconderTodos();
             break;
-        case 33:   // Page Up / CH+
+        case 33:   // CH+
             acao = "next_track";
             break;
-        case 34:   // Page Down / CH-
+        case 34:   // CH-
             acao = "prev_track";
             break;
     }
@@ -487,7 +462,7 @@ window.addEventListener("keydown", function(e) {
         showDebug("📺 " + acao.toUpperCase());
         enviarComando(acao);
     }
-}, true); // UseCapture ativado para interceptar antes de qualquer outro elemento
+}, true);
 </script>
 </body>
 </html>
