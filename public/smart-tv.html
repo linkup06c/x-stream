@@ -133,9 +133,10 @@ html, body {
 </div>
 
 <script>
+// Pega a URL atual do servidor local de forma dinâmica
 var SERVER_URL = (window.location.origin && window.location.origin.startsWith("http"))
     ? window.location.origin 
-    : "https://x-stream-56ya.onrender.com";
+    : "http://localhost:3000";
 
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
@@ -215,7 +216,6 @@ function receberMidia(url, tempoInicial){
 
 function tentarHLS(url, tempoInicial) {
     if (Hls.isSupported()) {
-        // Configuração leve e ideal para Smart TVs
         hlsPlayer = new Hls({
             enableWorker: false, 
             maxBufferLength: 10,
@@ -334,7 +334,6 @@ function verificarServidor(){
                     }
                     if(!url && dados.video){ url = dados.video; }
 
-                    // Troca de mídia
                     if((dados.ativo || dados.playing !== false) && url){
                         if(url !== ultimaURL){
                             ultimaURL = url;
@@ -350,7 +349,6 @@ function verificarServidor(){
                         }
                     }
 
-                    // Controle simples de Play/Pause e Mute/Volume (Sem mexer no currentTime!)
                     if(tipoAtual === "video" && mediaVideo){
                         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
@@ -363,7 +361,6 @@ function verificarServidor(){
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
-                        // Ajuste manual APENAS se houver um salto manual deliberado do controle (ex: Seek)
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
                             mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
@@ -375,7 +372,6 @@ function verificarServidor(){
                 atualizarStatus(false);
             }
 
-            // Intervalo otimizado de 3 segundos para economizar CPU da Smart TV
             clearTimeout(pollTimeout);
             pollTimeout = setTimeout(verificarServidor, 3000);
         }
@@ -395,9 +391,11 @@ mediaVideo.onended = function(){ enviarComando("next"); };
 
 function enviarComando(acao){
     var xhr = new XMLHttpRequest();
-    xhr.open("POST", SERVER_URL + "/controle", true);
+    // ATUALIZADO: Rota corrigida para /control (compatível com o novo servidor)
+    xhr.open("POST", SERVER_URL + "/control", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.send(JSON.stringify({ acao: acao }));
+    // ATUALIZADO: Parâmetro alterado de "acao" para "action"
+    xhr.send(JSON.stringify({ action: acao }));
 }
 </script>
 
