@@ -1,0 +1,195 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const ESTADO_FILE = path.join(__dirname, 'estado.json');
+
+function lerEstado() {
+  try {
+    if (fs.existsSync(ESTADO_FILE)) {
+      const data = fs.readFileSync(ESTADO_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (e) {}
+  
+  return {
+    video: null,
+    ativo: false,
+    playing: false,
+    reproduzindo: false,
+    currentTime: 0,
+    updatedAt: Date.now(),
+    volume: 100,
+    mudo: false,
+    fila: [],
+    atual: 0,
+    comandoId: 0,
+    acao: null
+  };
+}
+
+function salvarEstado(state) {
+  try {
+    fs.writeFileSync(ESTADO_FILE, JSON.stringify(state, null, 2));
+  } catch (e) {}
+}
+
+function getCurrentPosition(state) {
+  if (!state.playing || !state.video) {
+    return state.currentTime || 0;
+  }
+  const elapsedSeconds = (Date.now() - (state.updatedAt || Date.now())) / 1000;
+  return (state.currentTime || 0) + elapsedSeconds;
+}
+
+// Enviar nova mídia / Fila
+app.post('/enviar', (req, res) => {
+  const { url, titulo } = req.body;
+  let state = lerEstado();
+
+  if (url) {
+    state.fila.push({ url: url, titulo: titulo || "Sem título" });
+
+    if (!state.video || !state.ativo) {
+      state.atual = state.fila.length - 1;
+      state.video = url;
+      state.ativo = true;
+      state.playing = true;
+      state.reproduzindo = true;
+      state.currentTime = 0;
+      state.updatedAt = Date.now();
+    }
+    salvarEstado(state);
+  }
+  res.json({ success: true, state });
+});
+
+app.post('/api/tocar', (req, res) => {
+  const { url } = req.body;
+  let state = lerEstado();
+
+  if (url) {
+    state.video = url;
+    state.ativo = true;
+    state.playing = true;
+    state.reproduzindo = true;
+    state.currentTime = 0;
+    state.updatedAt = Date.now();
+    salvarEstado(state);
+    return res.json({ success: true, url });
+  }
+  res.status(400).json({ success: false, erro: "URL não informada" });
+});
+
+app.delete('/api/fila', (req, res) => {
+  let state = lerEstado();
+  state.fila = [];
+  state.atual = 0;
+  state.video = null;
+  state.ativo = false;
+  state.playing = false;
+  state.reproduzindo = false;
+  state.currentTime = 0;
+  state.updatedAt = Date.now();
+  salvarEstado(state);
+  res.json({ success: true, mensagem: "Fila limpa com sucesso!" });
+});
+
+// Central de Comandos do Controle
+app.post('/controle', (req, res) => {
+  const acao = req.body.acao;
+  let state = lerEstado();
+
+  if (acao) {
+    state.currentTime = getCurrentPosition(state);
+    state.updatedAt = Date.now();
+
+    switch (acao) {
+      case 'toggle_play':
+        if (!state.video) break;
+        state.playing = !state.playing;
+        state.reproduzindo = state.playing;
+        break;
+
+      case 'play':
+        if (!state.video || state.playing) break;
+        state.playing = true;
+        state.reproduzindo = true;
+        break;
+
+      case 'pause':
+        if (!state.playing) break;
+        state.playing = false;
+        state.reproduzindo = false;
+        break;
+
+      case 'stop':
+      case 'clear_queue':
+        state.video = null;
+        state.ativo = false;
+        state.playing = false;
+        state.reproduzindo = false;
+        state.currentTime = 0;
+        state.fila = [];
+        state.atual = 0;
+        break;
+
+      case 'toggle_mute':
+        state.mudo = !state.mudo;
+        break;
+
+      case 'volume_up':
+        state.volume = Math.min(100, state.volume + 10);
+        break;
+
+      case 'volume_down':
+        state.volume = Math.max(0, state.volume - 10);
+        break;
+
+      case 'seek_forward':
+        state.currentTime += 15;
+        break;
+
+      case 'seek_backward':
+        state.currentTime = Math.max(0, state.currentTime - 15);
+        break;
+
+      case 'next_track':
+        if (state.fila && state.fila.length > 0) {
+          state.atual = (state.atual < state.fila.length - 1) ? state.atual + 1 : 0;
+          state.video = state.fila[state.atual].url;
+          state.currentTime = 0;
+          state.playing = true;
+          state.reproduzindo = true;
+        }
+        break;
+
+      case 'prev_track':
+        if (state.fila && state.fila.length > 0) {
+          state.atual = (state.atual > 0) ? state.atual - 1 : state.fila.length - 1;
+          state.video = state.fila[state.atual].url;
+          state.currentTime = 0;
+          state.playing = true;
+          state.reproduzindo = true;
+        }
+        break;
+    }
+
+    state.ultimoComando = acao;
+    state.comandoId = Date.now();
+    state.acao = acao;
+    salvarEstado(state);
+  }
+
+  res.json({ success: true, state });
+});
+
+const PORT_CONTROL = process.env.CONTROL_PORT || 3001;
+app.listen(PORT_CONTROL, () => {
+  console.log(`Servidor de Controle rodando na porta ${PORT_CONTROL}`);
+});
