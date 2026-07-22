@@ -8,13 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. SERVE O PLAYER LOCAL (Tudo o que estiver na pasta 'public' fica acessível na raiz)
+// Libera arquivos estáticos da pasta public
 app.use(express.static(path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Estado Mestre Central (O cérebro que sincroniza tudo)
+// Estado Mestre Central
 let masterState = {
   video: null,          // URL do vídeo/áudio atual
   ativo: false,         // Transmissão ativa?
@@ -31,7 +31,6 @@ let masterState = {
   atual: 0
 };
 
-// Calcula a posição atual do vídeo matematicamente sem sobrecarregar a rede
 function getCurrentPosition() {
   if (!masterState.playing || !masterState.video) {
     return masterState.currentTime;
@@ -40,15 +39,14 @@ function getCurrentPosition() {
   return masterState.currentTime + elapsedSeconds;
 }
 
-// Dispara atualizações em tempo real via WebSocket para os players modernos (TV Box)
-function broadcastState(actionExtra = null) {
+// Dispara atualizações via WebSocket para clientes compatíveis
+function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
   const payload = JSON.stringify({
-    type: actionExtra ? "command" : "sync-transmission",
-    action: actionExtra,
+    tipo: acaoExtra ? "comando" : "sync-transmission",
+    x-stm: acaoExtra,
     ...masterState,
     currentTime: currentPos,
-    isPlaying: masterState.playing,
     reproduzindo: masterState.playing,
     updatedAt: Date.now()
   });
@@ -60,7 +58,7 @@ function broadcastState(actionExtra = null) {
   });
 }
 
-// Rota HTTP Polling (Usada pela TV antiga / Sraf)
+// Rota HTTP Polling usada pela Smart TV
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
   res.json({
@@ -73,8 +71,8 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Rota de Envio de Mídia (Alinhada com o novo APK: POST /stream)
-app.post('/stream', (req, res) => {
+// Envio de nova mídia
+app.post('/enviar', (req, res) => {
   const url = req.body.url;
   if (url) {
     masterState.video = url;
@@ -88,16 +86,16 @@ app.post('/stream', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// Rota de Controle Remoto (Alinhada com o novo APK: POST /control, esperando "action")
-app.post('/control', (req, res) => {
-  // Pega "action" (do novo app) ou "acao" (segurança retroativa)
-  const action = req.body.action || req.body.acao;
+// Recepção de comandos do Controle Remoto
+app.post('/controle', (req, res) => {
+  const x-stm = req.body.x-stm;
 
-  if (action) {
-    switch (action) {
+  if (x-stm) {
+    switch (x-stm) {
       case 'play':
       case 'resume':
         if (!masterState.video) break;
+        // Alterna (toggle) entre play e pause se clicado consecutivamente
         masterState.playing = !masterState.playing;
         masterState.reproduzindo = masterState.playing;
         if (!masterState.playing) {
@@ -164,18 +162,18 @@ app.post('/control', (req, res) => {
         break;
     }
 
-    masterState.ultimoComando = action;
+    masterState.ultimoComando = x-stm;
     masterState.comandoId = Date.now();
-    broadcastState(action);
+    broadcastState(x-stm);
   }
 
   res.json({ success: true, state: masterState });
 });
 
-// Canal WebSocket para os Players Modernos (TV Box)
+// WebSocket para o Player Secundário / WebSoft
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify({
-    type: "sync-transmission",
+    tipo: "sync-transmission",
     ...masterState,
     currentTime: getCurrentPosition(),
     updatedAt: Date.now()
@@ -184,9 +182,9 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
-      if (data.type === 'sync-request' || data.tipo === 'sync-request') {
+      if (data.tipo === 'sync-request') {
         ws.send(JSON.stringify({
-          type: "sync-transmission",
+          tipo: "sync-transmission",
           ...masterState,
           currentTime: getCurrentPosition(),
           updatedAt: Date.now()
@@ -196,13 +194,12 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Garante que qualquer acesso direto sirva o index.html da pasta public
+// Rota principal e atalhos para abrir o arquivo smart-tv.html
 app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'smart-tv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor X-Stream rodando na porta ${PORT}`);
-  console.log(`📺 Player local da TV Box configurado na pasta /public/index.html`);
+server.listen(PORT, () => {
+  console.log(`Servidor X-Stream rodando na porta ${PORT}`);
 });
