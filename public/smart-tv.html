@@ -393,11 +393,11 @@ verificarServidor();
 
 mediaVideo.onended = function(){ enviarComando("next"); };
 
-function enviarComando(x-stm){
+function enviarComando(slink){
     var xhr = new XMLHttpRequest();
     xhr.open("POST", SERVER_URL + "/controle", true);
     xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.send(JSON.stringify({ x-stm: x-stm }));
+    xhr.send(JSON.stringify({ slink: slink }));
 }
 </script>
 
