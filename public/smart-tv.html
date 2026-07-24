@@ -60,6 +60,23 @@ html, body {
     transition: all 0.3s ease;
 }
 
+
+#cursorLayer{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:99999;
+color:transparent;
+background:transparent;
+user-select:text;
+-webkit-user-select:text;
+cursor:text;
+
+
+}
+
 .dot {
     width: 12px;
     height: 12px;
@@ -113,6 +130,10 @@ html, body {
 </head>
 
 <body>
+
+<div id="cursorLayer">
+Texto de teste invisível
+</div>
 
 <!-- EMBLEMA STATUS LIVE / OFFLINE -->
 <div id="statusBadge" class="offline">
