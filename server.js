@@ -86,7 +86,7 @@ app.post('/enviar', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// Recepção de comandos do Controle Remoto
+// Recepção de comandos do Controle Remoto (App Android)
 app.post('/controle', (req, res) => {
   const slink = req.body.slink;
 
@@ -95,7 +95,6 @@ app.post('/controle', (req, res) => {
       case 'play':
       case 'resume':
         if (!masterState.video) break;
-        // Alterna (toggle) entre play e pause se clicado consecutivamente
         masterState.playing = !masterState.playing;
         masterState.reproduzindo = masterState.playing;
         if (!masterState.playing) {
@@ -112,7 +111,6 @@ app.post('/controle', (req, res) => {
         break;
 
       case 'power':
-      case 'clear':
       case 'stop':
         masterState.video = null;
         masterState.ativo = false;
@@ -120,6 +118,39 @@ app.post('/controle', (req, res) => {
         masterState.reproduzindo = false;
         masterState.currentTime = 0;
         masterState.updatedAt = Date.now();
+        break;
+
+      // LIMPAR / ZERAR FILA (Compatível com múltiplos termos)
+      case 'clear':
+      case 'limpar':
+        masterState.video = null;
+        masterState.ativo = false;
+        masterState.playing = false;
+        masterState.reproduzindo = false;
+        masterState.currentTime = 0;
+        masterState.fila = [];
+        masterState.atual = 0;
+        masterState.updatedAt = Date.now();
+        break;
+
+      // AVANÇAR 15 SEGUNDOS
+      case 'forward':
+      case 'avancar_15':
+      case 'forward_15':
+        if (masterState.playing && masterState.video) {
+          masterState.currentTime = getCurrentPosition() + 15;
+          masterState.updatedAt = Date.now();
+        }
+        break;
+
+      // VOLTAR 15 SEGUNDOS
+      case 'rewind':
+      case 'voltar_15':
+      case 'rewind_15':
+        if (masterState.playing && masterState.video) {
+          masterState.currentTime = Math.max(0, getCurrentPosition() - 15);
+          masterState.updatedAt = Date.now();
+        }
         break;
 
       case 'mute':
