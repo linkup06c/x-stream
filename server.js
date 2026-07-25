@@ -88,7 +88,8 @@ app.post('/enviar', (req, res) => {
 
 // Recepção de comandos do Controle Remoto (App Android)
 app.post('/controle', (req, res) => {
-  const slink = req.body.slink;
+  // Aceita tanto 'slink' quanto 'comando' para total compatibilidade com o app nativo
+  const slink = req.body.slink || req.body.comando;
 
   if (slink) {
     switch (slink) {
@@ -120,7 +121,7 @@ app.post('/controle', (req, res) => {
         masterState.updatedAt = Date.now();
         break;
 
-      // LIMPAR / ZERAR FILA (Compatível com múltiplos termos)
+      // LIMPAR / ZERAR FILA
       case 'clear':
       case 'limpar':
         masterState.video = null;
