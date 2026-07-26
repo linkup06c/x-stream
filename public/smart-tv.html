@@ -193,7 +193,7 @@ function receberMidia(url, tempoInicial, isStandby){
         return;
     }
     
-    if(url === urlAtual && !isStandby) return;
+    if(url === urlAtual) return;
     urlAtual = url;
     ultimaURL = url;
     limparMidia();
@@ -409,27 +409,35 @@ function verificarServidor(){
 }
 verificarServidor();
 
-// TRUQUE INTELIGENTE: Trata o fim do vídeo do standby igualzinho a uma troca de mídia limpa,
-// usando a mesma mecânica rápida que a TV usa para trocar de canal/vídeo.
+// Loop suave preventivo para eliminar o engasgo no fim do vídeo/áudio do standby
+mediaVideo.ontimeupdate = function() {
+    if (emModoStandbyAnterior && mediaVideo.duration && !isNaN(mediaVideo.duration)) {
+        // Se faltar menos de 0.3 segundos para acabar, ele joga pro início suavemente sem travar
+        if (mediaVideo.duration - mediaVideo.currentTime < 0.3) {
+            mediaVideo.currentTime = 0;
+            mediaVideo.play().catch(function(){});
+        }
+    }
+};
+
+mediaAudio.ontimeupdate = function() {
+    if (emModoStandbyAnterior && mediaAudio.duration && !isNaN(mediaAudio.duration)) {
+        if (mediaAudio.duration - mediaAudio.currentTime < 0.3) {
+            mediaAudio.currentTime = 0;
+            mediaAudio.play().catch(function(){});
+        }
+    }
+};
+
 mediaVideo.onended = function(){ 
-    if (emModoStandbyAnterior) {
-        // Recarrega o vídeo do zero de forma idêntica a um "next" limpo
-        mediaVideo.src = "";
-        mediaVideo.load();
-        mediaVideo.src = STANDBY_VIDEO_URL;
-        mediaVideo.load();
-        mediaVideo.play().catch(function(){});
-    } else {
+    if(!emModoStandbyAnterior) {
         enviarComando("next"); 
     }
 };
 
 mediaAudio.onended = function(){
     if (emModoStandbyAnterior) {
-        mediaAudio.src = "";
-        mediaAudio.load();
-        mediaAudio.src = STANDBY_AUDIO_URL;
-        mediaAudio.load();
+        mediaAudio.currentTime = 0;
         mediaAudio.play().catch(function(){});
     }
 };
