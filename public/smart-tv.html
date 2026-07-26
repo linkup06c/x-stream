@@ -409,12 +409,11 @@ function verificarServidor(){
 }
 verificarServidor();
 
-// TRQUE DE OURO PARA O SRAF TV BROWSER:
-// Pula para o início faltando meio segundo (0.5s) para acabar o vídeo, 
-// evitando que o player trave esperando o evento nativo de "fim de arquivo".
+// Loop suave preventivo para eliminar o engasgo no fim do vídeo/áudio do standby
 mediaVideo.ontimeupdate = function() {
     if (emModoStandbyAnterior && mediaVideo.duration && !isNaN(mediaVideo.duration)) {
-        if (mediaVideo.duration - mediaVideo.currentTime < 0.5) {
+        // Se faltar menos de 0.3 segundos para acabar, ele joga pro início suavemente sem travar
+        if (mediaVideo.duration - mediaVideo.currentTime < 0.3) {
             mediaVideo.currentTime = 0;
             mediaVideo.play().catch(function(){});
         }
@@ -423,7 +422,7 @@ mediaVideo.ontimeupdate = function() {
 
 mediaAudio.ontimeupdate = function() {
     if (emModoStandbyAnterior && mediaAudio.duration && !isNaN(mediaAudio.duration)) {
-        if (mediaAudio.duration - mediaAudio.currentTime < 0.5) {
+        if (mediaAudio.duration - mediaAudio.currentTime < 0.3) {
             mediaAudio.currentTime = 0;
             mediaAudio.play().catch(function(){});
         }
@@ -433,6 +432,13 @@ mediaAudio.ontimeupdate = function() {
 mediaVideo.onended = function(){ 
     if(!emModoStandbyAnterior) {
         enviarComando("next"); 
+    }
+};
+
+mediaAudio.onended = function(){
+    if (emModoStandbyAnterior) {
+        mediaAudio.currentTime = 0;
+        mediaAudio.play().catch(function(){});
     }
 };
 
