@@ -16,12 +16,12 @@ const wss = new WebSocket.Server({ server });
 
 // Estado Mestre Central
 let masterState = {
-  video: null,          // URL do vídeo/áudio atual
-  ativo: false,         // Transmissão ativa?
-  playing: false,       // Rodando ou pausado?
-  reproduzindo: false,  // Compatibilidade com Smart TV
-  currentTime: 0,       // Tempo em segundos
-  updatedAt: Date.now(),// Timestamp de sincronização
+  video: null,          
+  ativo: false,         
+  playing: false,       
+  reproduzindo: false,  
+  currentTime: 0,       
+  updatedAt: Date.now(),
   volume: 100,
   mudo: false,
   seek: 0,
@@ -39,16 +39,23 @@ function getCurrentPosition() {
   return masterState.currentTime + elapsedSeconds;
 }
 
-// Dispara atualizações via WebSocket para clientes compatíveis
+// Disparador otimizado via WebSocket
 function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
+  
+  // Atualiza o currentTime oficial antes do broadcast para evitar atrasos de cálculo
+  if (masterState.playing && masterState.video) {
+    masterState.currentTime = currentPos;
+    masterState.updatedAt = Date.now();
+  }
+
   const payload = JSON.stringify({
     tipo: acaoExtra ? "comando" : "sync-transmission",
     slink: acaoExtra,
     ...masterState,
-    currentTime: currentPos,
+    currentTime: masterState.currentTime,
     reproduzindo: masterState.playing,
-    updatedAt: Date.now()
+    updatedAt: masterState.updatedAt
   });
 
   wss.clients.forEach(client => {
@@ -86,29 +93,35 @@ app.post('/enviar', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// Recepção de comandos do Controle Remoto (App Android)
+// Recepção de comandos do Controle Remoto (App Android) - Ultra Rápido
 app.post('/controle', (req, res) => {
-  // Aceita tanto 'slink' quanto 'comando' para total compatibilidade com o app nativo
   const slink = req.body.slink || req.body.comando;
+  const targetTime = req.body.time !== undefined ? req.body.time : req.body.seek;
 
-  if (slink) {
+  if (slink || targetTime !== undefined) {
+    // Atualiza a posição atual exata antes de processar qualquer alteração
+    if (masterState.video) {
+      masterState.currentTime = getCurrentPosition();
+      masterState.updatedAt = Date.now();
+    }
+
     switch (slink) {
       case 'play':
+        if (!masterState.video) break;
+        masterState.playing = true;
+        masterState.reproduzindo = true;
+        break;
+
       case 'resume':
+      case 'toggle-play':
         if (!masterState.video) break;
         masterState.playing = !masterState.playing;
         masterState.reproduzindo = masterState.playing;
-        if (!masterState.playing) {
-          masterState.currentTime = getCurrentPosition();
-        }
-        masterState.updatedAt = Date.now();
         break;
 
       case 'pause':
-        masterState.currentTime = getCurrentPosition();
         masterState.playing = false;
         masterState.reproduzindo = false;
-        masterState.updatedAt = Date.now();
         break;
 
       case 'power':
@@ -118,10 +131,8 @@ app.post('/controle', (req, res) => {
         masterState.playing = false;
         masterState.reproduzindo = false;
         masterState.currentTime = 0;
-        masterState.updatedAt = Date.now();
         break;
 
-      // LIMPAR / ZERAR FILA
       case 'clear':
       case 'limpar':
         masterState.video = null;
@@ -131,26 +142,25 @@ app.post('/controle', (req, res) => {
         masterState.currentTime = 0;
         masterState.fila = [];
         masterState.atual = 0;
-        masterState.updatedAt = Date.now();
         break;
 
-      // AVANÇAR 15 SEGUNDOS
+      // CORRIGIDO: Avançar 15 segundos
       case 'forward':
       case 'avancar_15':
       case 'forward_15':
-        if (masterState.playing && masterState.video) {
-          masterState.currentTime = getCurrentPosition() + 15;
-          masterState.updatedAt = Date.now();
+      case '+15':
+        if (masterState.video) {
+          masterState.currentTime += 15;
         }
         break;
 
-      // VOLTAR 15 SEGUNDOS
+      // CORRIGIDO: Voltar 15 segundos
       case 'rewind':
       case 'voltar_15':
       case 'rewind_15':
-        if (masterState.playing && masterState.video) {
-          masterState.currentTime = Math.max(0, getCurrentPosition() - 15);
-          masterState.updatedAt = Date.now();
+      case '-15':
+        if (masterState.video) {
+          masterState.currentTime = Math.max(0, masterState.currentTime - 15);
         }
         break;
 
@@ -170,35 +180,49 @@ app.post('/controle', (req, res) => {
         masterState.seek = 0;
         break;
 
+      // CORRIGIDO: Próximo na Fila
       case 'next':
-        if (masterState.fila && masterState.fila.length > 0 && masterState.atual < masterState.fila.length - 1) {
-          masterState.atual++;
-          masterState.video = masterState.fila[masterState.atual].url;
-          masterState.currentTime = 0;
-          masterState.playing = true;
-          masterState.reproduzindo = true;
-          masterState.updatedAt = Date.now();
+        if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
+          if (masterState.atual < masterState.fila.length - 1) {
+            masterState.atual++;
+            masterState.video = masterState.fila[masterState.atual].url || masterState.fila[masterState.atual];
+            masterState.currentTime = 0;
+            masterState.playing = true;
+            masterState.reproduzindo = true;
+          }
         }
         break;
 
+      // CORRIGIDO: Anterior na Fila
       case 'prev':
       case 'previous':
-        if (masterState.fila && masterState.fila.length > 0 && masterState.atual > 0) {
-          masterState.atual--;
-          masterState.video = masterState.fila[masterState.atual].url;
-          masterState.currentTime = 0;
-          masterState.playing = true;
-          masterState.reproduzindo = true;
-          masterState.updatedAt = Date.now();
+        if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
+          if (masterState.atual > 0) {
+            masterState.atual--;
+            masterState.video = masterState.fila[masterState.atual].url || masterState.fila[masterState.atual];
+            masterState.currentTime = 0;
+            masterState.playing = true;
+            masterState.reproduzindo = true;
+          }
         }
         break;
     }
 
-    masterState.ultimoComando = slink;
-    masterState.comandoId = Date.now();
-    broadcastState(slink);
+    // Tratamento de Seek Direto por barra de progresso
+    if (targetTime !== undefined && !isNaN(targetTime)) {
+      masterState.currentTime = Math.max(0, Number(targetTime));
+      masterState.seek = masterState.currentTime;
+    }
+
+    masterState.updatedAt = Date.now();
+    masterState.ultimoComando = slink || 'seek';
+    masterState.comandoId = masterState.updatedAt;
+
+    // Dispara o WebSocket imediatamente para todas as telas conectadas
+    broadcastState(slink || 'seek');
   }
 
+  // Responde imediatamente ao app Android com o estado atualizado
   res.json({ success: true, state: masterState });
 });
 
@@ -226,12 +250,11 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Rota principal e atalhos para abrir o arquivo smart-tv.html
 app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'smart-tv.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor X-Stream rodando na porta ${PORT}`);
+  console.log(`Servidor X-Stream rodando na porta ${PORT} (Modo de Alta Responsividade)`);
 });
