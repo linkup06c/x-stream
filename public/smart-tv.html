@@ -49,7 +49,7 @@ html, body {
     bottom: 20px;
     left: 20px;
     z-index: 9999;
-    height: 24px; /* Altura menor para ficar discreto */
+    height: 24px;
     width: auto;
     object-fit: contain;
     pointer-events: none;
@@ -123,6 +123,9 @@ var SERVER_URL = (window.location.origin && window.location.origin.startsWith("h
     ? window.location.origin 
     : "https://x-stream-56ya.onrender.com";
 
+var wsProtocol = SERVER_URL.startsWith("https") ? "wss://" : "ws://";
+var WS_URL = wsProtocol + SERVER_URL.replace(/^https?:\/\//, '');
+
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
@@ -131,13 +134,12 @@ var keyDebug = document.getElementById("keyDebug");
 var tipoAtual = "";
 var urlAtual = "";
 var ultimaURL = "";
-var pollTimeout = null;
 var hlsPlayer = null;
-var debugTimeout = null;
 var tempoInicialAjustado = false;
+var ultimoComandoIdProcessado = 0;
 
 function atualizarStatus(isLive){
-    // Função mantida de forma interna para evitar erros no restante do script, sem exibir o elemento visual na tela.
+    // Mantido internamente
 }
 
 function mostrarErro(msg){
@@ -150,7 +152,6 @@ function mostrarErro(msg){
 }
 
 function limparMidia(){
-    atualizarStatus(false);
     tempoInicialAjustado = false;
 
     if (hlsPlayer) {
@@ -178,8 +179,17 @@ function limparMidia(){
 }
 
 function receberMidia(url, tempoInicial){
-    if(!url || url === urlAtual) return;
+    if(!url) {
+        urlAtual = "";
+        ultimaURL = "";
+        limparMidia();
+        esconderTodos();
+        return;
+    }
+    
+    if(url === urlAtual) return;
     urlAtual = url;
+    ultimaURL = url;
     limparMidia();
 
     var urlLimpa = url.split('?')[0].toLowerCase();
@@ -245,7 +255,6 @@ function tentarAudio(url){
         confirmado = true; 
         tipoAtual = "audio";
         mediaAudio.play();
-        atualizarStatus(true);
     };
 
     mediaAudio.onerror = function(){ if(!confirmado) tentarImagem(url); };
@@ -256,12 +265,7 @@ function tentarImagem(url){
     img.onload = function(){
         tipoAtual = "image"; 
         mediaImage.src = url;
-        mostrarImagem(); 
-        atualizarStatus(true);
-    };
-    img.onerror = function(){ 
-        atualizarStatus(false);
-        mostrarErro("Formato ou link não suportado"); 
+        mostrarImage(); 
     };
     img.src = url;
 }
@@ -283,17 +287,82 @@ function iniciarVideo(tempoInicial){
 
     var tentativa = mediaVideo.play();
     if(tentativa !== undefined){
-        tentativa.then(function(){ 
-            atualizarStatus(true);
-        }).catch(function(){ 
+        tentativa.then(function(){}).catch(function(){ 
             setTimeout(function(){ iniciarVideo(tempoInicial); }, 500); 
         });
     }
 }
 
-mediaVideo.onplaying = function() { atualizarStatus(true); };
-mediaVideo.onpause = function() { atualizarStatus(false); };
+// SINCRONIZAÇÃO COMPLETA DE ESTADO (Vinda do Servidor via HTTP ou WebSocket)
+function aplicarEstado(dados) {
+    // 1. Verificar se há nova mídia ou limpeza
+    var url = "";
+    if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
+        url = dados.fila[dados.atual].url || dados.fila[dados.atual];
+    }
+    if(!url && dados.video){ url = dados.video; }
 
+    if (url) {
+        if (url !== urlAtual) {
+            receberMidia(url, dados.currentTime || 0);
+        }
+    } else {
+        if (urlAtual !== "") {
+            urlAtual = "";
+            ultimaURL = "";
+            limparMidia();
+            esconderTodos();
+        }
+    }
+
+    // 2. Controle de Reprodução (Play / Pause)
+    if (tipoAtual === "video" && mediaVideo) {
+        var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
+
+        if (isPlaying === false && !mediaVideo.paused) {
+            mediaVideo.pause();
+        } else if (isPlaying === true && mediaVideo.paused) {
+            mediaVideo.play().catch(function(){});
+        }
+
+        // Volume e Mute
+        if (dados.volume !== undefined) { mediaVideo.volume = dados.volume / 100; }
+        if (dados.mudo !== undefined) { mediaVideo.muted = dados.mudo; }
+
+        // Tratamento de comandos de salto de tempo (Avançar/Voltar/Seek direto)
+        if (dados.comandoId && dados.comandoId !== ultimoComandoIdProcessado) {
+            ultimoComandoIdProcessado = dados.comandoId;
+            
+            if (dados.ultimoComando === 'forward' || dados.ultimoComando === 'avancar_15' || dados.ultimoComando === '+15') {
+                mediaVideo.currentTime = Math.min(mediaVideo.duration || 0, mediaVideo.currentTime + 15);
+            } else if (dados.ultimoComando === 'rewind' || dados.ultimoComando === 'voltar_15' || dados.ultimoComando === '-15') {
+                mediaVideo.currentTime = Math.max(0, mediaVideo.currentTime - 15);
+            } else if (dados.currentTime !== undefined && Math.abs(mediaVideo.currentTime - dados.currentTime) > 2) {
+                // Sincroniza o tempo se houver diferença superior a 2 segundos
+                mediaVideo.currentTime = dados.currentTime;
+            }
+        }
+    }
+}
+
+// CONEXÃO WEBSOCKET EM TEMPO REAL PARA RESPOSTA INSTANTÂNEA AOS CONTROLES
+function conectarWebSocket() {
+    var ws = new WebSocket(WS_URL);
+
+    ws.onmessage = function(event) {
+        try {
+            var dados = JSON.parse(event.data);
+            aplicarEstado(dados);
+        } catch(e){}
+    };
+
+    ws.onclose = function() {
+        setTimeout(conectarWebSocket, 3000); // Reconecta automático se cair
+    };
+}
+conectarWebSocket();
+
+// POLLING DE SEGURANÇA (Caso o WebSocket demore, o HTTP garante a sincronia)
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
     xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
@@ -303,64 +372,17 @@ function verificarServidor(){
             if(xhr.status === 200){
                 try{
                     var dados = JSON.parse(xhr.responseText);
-
-                    var url = "";
-                    if(dados.fila && dados.fila.length > 0 && dados.fila[dados.atual]){
-                        url = dados.fila[dados.atual].url;
-                    }
-                    if(!url && dados.video){ url = dados.video; }
-
-                    if((dados.ativo || dados.playing !== false) && url){
-                        if(url !== ultimaURL){
-                            ultimaURL = url;
-                            receberMidia(url, dados.currentTime || 0);
-                        }
-                    } else if (!dados.ativo && !dados.playing && !dados.video) {
-                        if(urlAtual !== ""){
-                            urlAtual = ""; 
-                            ultimaURL = "";
-                            limparMidia(); 
-                            esconderTodos(); 
-                            atualizarStatus(false);
-                        }
-                    }
-
-                    if(tipoAtual === "video" && mediaVideo){
-                        var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
-
-                        if(isPlaying === false && !mediaVideo.paused){
-                            mediaVideo.pause();
-                        } else if(isPlaying === true && mediaVideo.paused){
-                            mediaVideo.play().catch(function(){});
-                        }
-
-                        if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
-                        if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
-
-                        if(dados.seek && dados.seek !== 0){
-                            var novoTempo = mediaVideo.currentTime + dados.seek;
-                            mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
-                            enviarComando("zerar_seek");
-                        }
-                    }
+                    aplicarEstado(dados);
                 }catch(e){}
-            } else {
-                atualizarStatus(false);
             }
-
-            clearTimeout(pollTimeout);
-            pollTimeout = setTimeout(verificarServidor, 3000);
+            setTimeout(verificarServidor, 3000);
         }
     };
-
     xhr.onerror = function() { 
-        atualizarStatus(false);
-        clearTimeout(pollTimeout);
-        pollTimeout = setTimeout(verificarServidor, 3000); 
+        setTimeout(verificarServidor, 3000); 
     };
     xhr.send();
 }
-
 verificarServidor();
 
 mediaVideo.onended = function(){ enviarComando("next"); };
