@@ -109,9 +109,8 @@ Texto de teste invisível
 <!-- DIAGNÓSTICO DE TECLAS DA TV -->
 <div id="keyDebug">TECLA: -</div>
 
-<!-- Adicionado o atributo loop para o vídeo nunca parar -->
-<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous" loop></video>
-<audio id="mediaAudio" autoplay preload="auto" loop></audio>
+<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
+<audio id="mediaAudio" autoplay preload="auto"></audio>
 <img id="mediaImage">
 
 <div id="errorBox">
@@ -147,7 +146,7 @@ var tempoInicialAjustado = false;
 var ultimoComandoIdProcessado = 0;
 var emModoStandbyAnterior = false;
 
-function atualizarStatus(isLive){}
+function atualizarStatus(){}
 
 function mostrarErro(msg){
     var box = document.getElementById("errorBox");
@@ -204,21 +203,17 @@ function receberMidia(url, tempoInicial, isStandby){
         mostrarVideo();
         
         mediaVideo.muted = true; 
-        mediaVideo.loop = true; // Garante loop nativo no standby
         mediaVideo.src = STANDBY_VIDEO_URL;
         mediaVideo.load();
         mediaVideo.play().catch(function(){});
 
-        mediaAudio.loop = true; // Garante loop nativo no áudio do standby
         mediaAudio.src = STANDBY_AUDIO_URL;
         mediaAudio.load();
         mediaAudio.play().catch(function(){});
         return;
     }
 
-    // Mídia normal (desativa o loop do standby)
     mediaVideo.muted = false;
-    mediaVideo.loop = false; 
     var urlLimpa = url.split('?')[0].toLowerCase();
 
     if (urlLimpa.endsWith('.m3u8')) {
@@ -414,10 +409,36 @@ function verificarServidor(){
 }
 verificarServidor();
 
-// Proteção rigorosa no onended para o standby nunca disparar o próximo vídeo
+// Loop suave preventivo para eliminar o engasgo no fim do vídeo/áudio do standby
+mediaVideo.ontimeupdate = function() {
+    if (emModoStandbyAnterior && mediaVideo.duration && !isNaN(mediaVideo.duration)) {
+        // Se faltar menos de 0.3 segundos para acabar, ele joga pro início suavemente sem travar
+        if (mediaVideo.duration - mediaVideo.currentTime < 0.3) {
+            mediaVideo.currentTime = 0;
+            mediaVideo.play().catch(function(){});
+        }
+    }
+};
+
+mediaAudio.ontimeupdate = function() {
+    if (emModoStandbyAnterior && mediaAudio.duration && !isNaN(mediaAudio.duration)) {
+        if (mediaAudio.duration - mediaAudio.currentTime < 0.3) {
+            mediaAudio.currentTime = 0;
+            mediaAudio.play().catch(function(){});
+        }
+    }
+};
+
 mediaVideo.onended = function(){ 
     if(!emModoStandbyAnterior) {
         enviarComando("next"); 
+    }
+};
+
+mediaAudio.onended = function(){
+    if (emModoStandbyAnterior) {
+        mediaAudio.currentTime = 0;
+        mediaAudio.play().catch(function(){});
     }
 };
 
