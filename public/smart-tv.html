@@ -43,23 +43,18 @@ html, body {
     display: none; z-index: 15;
 }
 
-/* INDICADOR DISCRETO LIVE / OFFLINE */
-#statusBadge {
+/* LOGO NO CANTO INFERIOR ESQUERDO (TAMANHO REDUZIDO) */
+#brandLogo {
     position: fixed;
-    top: 25px;
-    left: 25px;
+    bottom: 20px;
+    left: 20px;
     z-index: 9999;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 6px 14px;
-    border-radius: 20px;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    transition: all 0.3s ease;
+    height: 24px; /* Altura menor para ficar discreto */
+    width: auto;
+    object-fit: contain;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7));
 }
-
 
 #cursorLayer{
 position:fixed;
@@ -73,33 +68,6 @@ background:transparent;
 user-select:text;
 -webkit-user-select:text;
 cursor:text;
-
-
-}
-
-.dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    transition: background 0.3s ease, box-shadow 0.3s ease;
-}
-
-.statusText {
-    color: #ffffff !important;
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-}
-
-#statusBadge.offline .dot {
-    background: #ff3333;
-    box-shadow: 0 0 8px #ff3333;
-}
-
-#statusBadge.live .dot {
-    background: #00ff66;
-    box-shadow: 0 0 10px #00ff66;
 }
 
 #keyDebug {
@@ -135,11 +103,8 @@ cursor:text;
 Texto de teste invisível
 </div>
 
-<!-- EMBLEMA STATUS LIVE / OFFLINE -->
-<div id="statusBadge" class="offline">
-    <span class="dot"></span>
-    <span id="statusText" class="statusText">OFFLINE</span>
-</div>
+<!-- LOGO NO CANTO INFERIOR ESQUERDO -->
+<img id="brandLogo" src="logo.png">
 
 <!-- DIAGNÓSTICO DE TECLAS DA TV -->
 <div id="keyDebug">TECLA: -</div>
@@ -161,8 +126,6 @@ var SERVER_URL = (window.location.origin && window.location.origin.startsWith("h
 var mediaVideo = document.getElementById("mediaVideo");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
-var statusBadge = document.getElementById("statusBadge");
-var statusText = document.getElementById("statusText");
 var keyDebug = document.getElementById("keyDebug");
 
 var tipoAtual = "";
@@ -174,13 +137,7 @@ var debugTimeout = null;
 var tempoInicialAjustado = false;
 
 function atualizarStatus(isLive){
-    if(isLive){
-        statusBadge.className = "live";
-        statusText.innerHTML = "LIVE";
-    } else {
-        statusBadge.className = "offline";
-        statusText.innerHTML = "OFFLINE";
-    }
+    // Função mantida de forma interna para evitar erros no restante do script, sem exibir o elemento visual na tela.
 }
 
 function mostrarErro(msg){
@@ -236,7 +193,6 @@ function receberMidia(url, tempoInicial){
 
 function tentarHLS(url, tempoInicial) {
     if (Hls.isSupported()) {
-        // Configuração leve e ideal para Smart TVs
         hlsPlayer = new Hls({
             enableWorker: false, 
             maxBufferLength: 10,
@@ -338,7 +294,6 @@ function iniciarVideo(tempoInicial){
 mediaVideo.onplaying = function() { atualizarStatus(true); };
 mediaVideo.onpause = function() { atualizarStatus(false); };
 
-// MOTOR DE POLLING LEVE PARA SMART TV
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
     xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
@@ -355,7 +310,6 @@ function verificarServidor(){
                     }
                     if(!url && dados.video){ url = dados.video; }
 
-                    // Troca de mídia
                     if((dados.ativo || dados.playing !== false) && url){
                         if(url !== ultimaURL){
                             ultimaURL = url;
@@ -371,7 +325,6 @@ function verificarServidor(){
                         }
                     }
 
-                    // Controle simples de Play/Pause e Mute/Volume (Sem mexer no currentTime!)
                     if(tipoAtual === "video" && mediaVideo){
                         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
@@ -384,7 +337,6 @@ function verificarServidor(){
                         if(dados.volume !== undefined){ mediaVideo.volume = dados.volume / 100; }
                         if(dados.mudo !== undefined){ mediaVideo.muted = dados.mudo; }
 
-                        // Ajuste manual APENAS se houver um salto manual deliberado do controle (ex: Seek)
                         if(dados.seek && dados.seek !== 0){
                             var novoTempo = mediaVideo.currentTime + dados.seek;
                             mediaVideo.currentTime = Math.max(0, Math.min(novoTempo, mediaVideo.duration || 0));
@@ -396,7 +348,6 @@ function verificarServidor(){
                 atualizarStatus(false);
             }
 
-            // Intervalo otimizado de 3 segundos para economizar CPU da Smart TV
             clearTimeout(pollTimeout);
             pollTimeout = setTimeout(verificarServidor, 3000);
         }
