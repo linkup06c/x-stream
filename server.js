@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Estado Mestre Central com Fila Aprimorada
+// Estado Mestre Central com Fila baseada em índices (Mantém histórico para voltar/avançar)
 let masterState = {
   video: null,          
   ativo: false,         
@@ -43,7 +43,6 @@ function getCurrentPosition() {
 function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
   
-  // Atualiza o currentTime oficial antes do broadcast para evitar atrasos de cálculo
   if (masterState.playing && masterState.video) {
     masterState.currentTime = currentPos;
     masterState.updatedAt = Date.now();
@@ -78,7 +77,7 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Envio de nova mídia (Adiciona na fila mantendo a lógica de fila contínua)
+// Envio de nova mídia (Adiciona na fila mantendo o histórico intacto)
 app.post('/enviar', (req, res) => {
   const url = req.body.url;
   const titulo = req.body.titulo || `Mídia ${masterState.fila.length + 1}`;
@@ -87,7 +86,7 @@ app.post('/enviar', (req, res) => {
     const itemMidia = { id: Date.now().toString(), url: url, titulo: titulo };
     masterState.fila.push(itemMidia);
 
-    // Se estiver vazio ou parado, começa a reproduzir imediatamente o item adicionado
+    // Se estiver vazio ou parado, começa a reproduzir o item adicionado
     if (!masterState.video || masterState.fila.length === 1) {
       masterState.atual = masterState.fila.length - 1;
       masterState.video = url;
@@ -111,7 +110,6 @@ app.post('/controle', (req, res) => {
   const targetTime = req.body.time !== undefined ? req.body.time : req.body.seek;
 
   if (slink || targetTime !== undefined) {
-    // Atualiza a posição atual exata antes de processar qualquer alteração
     if (masterState.video) {
       masterState.currentTime = getCurrentPosition();
       masterState.updatedAt = Date.now();
@@ -196,36 +194,35 @@ app.post('/controle', (req, res) => {
         masterState.seek = 0;
         break;
 
-      // Próximo na Fila (Consome o item anterior da fila exatamente como o outro servidor)
+      // Próximo na Fila (Avança o índice mantendo a lista salva para permitir o botão "Voltar")
       case 'next':
       case 'proximo_video':
         if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
-          masterState.fila.shift(); // Remove o vídeo antigo/reproduzido
-          masterState.currentTime = 0;
-          masterState.updatedAt = Date.now();
-
-          if (masterState.fila.length > 0) {
-            masterState.atual = 0;
-            masterState.video = masterState.fila[0].url || masterState.fila[0];
+          if (masterState.atual < masterState.fila.length - 1) {
+            masterState.atual++;
+            const proximoItem = masterState.fila[masterState.atual];
+            masterState.video = proximoItem.url || proximoItem;
+            masterState.currentTime = 0;
             masterState.playing = true;
             masterState.reproduzindo = true;
           } else {
+            // Se chegou ao fim da fila, desativa mantendo os itens salvos no histórico
             masterState.video = null;
             masterState.ativo = false;
             masterState.playing = false;
             masterState.reproduzindo = false;
-            masterState.atual = 0;
           }
         }
         break;
 
-      // Anterior na Fila
+      // Anterior na Fila (Volta para o vídeo anterior mantido no histórico da lista)
       case 'prev':
       case 'previous':
         if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
           if (masterState.atual > 0) {
             masterState.atual--;
-            masterState.video = masterState.fila[masterState.atual].url || masterState.fila[masterState.atual];
+            const itemAnterior = masterState.fila[masterState.atual];
+            masterState.video = itemAnterior.url || itemAnterior;
             masterState.currentTime = 0;
             masterState.playing = true;
             masterState.reproduzindo = true;
@@ -234,7 +231,6 @@ app.post('/controle', (req, res) => {
         break;
     }
 
-    // Tratamento de Seek Direto por barra de progresso
     if (targetTime !== undefined && !isNaN(targetTime)) {
       masterState.currentTime = Math.max(0, Number(targetTime));
       masterState.seek = masterState.currentTime;
@@ -244,11 +240,9 @@ app.post('/controle', (req, res) => {
     masterState.ultimoComando = slink || 'seek';
     masterState.comandoId = masterState.updatedAt;
 
-    // Dispara o WebSocket imediatamente para todas as telas conectadas
     broadcastState(slink || 'seek');
   }
 
-  // Responde imediatamente ao app Android com o estado atualizado
   res.json({ success: true, state: masterState });
 });
 
@@ -282,5 +276,5 @@ app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor X-Stream rodando na porta ${PORT} (Com Fila Integrada)`);
+  console.log(`Servidor X-Stream rodando na porta ${PORT} (Fila com Histórico para Botão Voltar)`);
 });
