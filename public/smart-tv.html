@@ -34,7 +34,6 @@ html, body {
     backface-visibility: hidden;
 }
 
-/* Áudio do Standby (executa em background sincronizado com o vídeo mudo) */
 #mediaAudio { display: none; }
 
 #mediaImage {
@@ -110,7 +109,8 @@ Texto de teste invisível
 <!-- DIAGNÓSTICO DE TECLAS DA TV -->
 <div id="keyDebug">TECLA: -</div>
 
-<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
+<!-- Adicionado o atributo loop para o vídeo nunca parar -->
+<video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous" loop></video>
 <audio id="mediaAudio" autoplay preload="auto" loop></audio>
 <img id="mediaImage">
 
@@ -121,7 +121,7 @@ Texto de teste invisível
 
 <script>
 // ==========================================
-// CONFIGURAÇÃO DOS LINKS DO STANDBY (EDITE AQUI)
+// CONFIGURAÇÃO DOS LINKS DO STANDBY
 // ==========================================
 var STANDBY_VIDEO_URL = "https://noa.it.tabdigital.cloud/public.php/dav/files/Q5qNxQgAEpcDJrA/standby_video.mp4";
 var STANDBY_AUDIO_URL = "https://noa.it.tabdigital.cloud/public.php/dav/files/Q5qNxQgAEpcDJrA/standby_audio.mp3";
@@ -147,9 +147,7 @@ var tempoInicialAjustado = false;
 var ultimoComandoIdProcessado = 0;
 var emModoStandbyAnterior = false;
 
-function atualizarStatus(isLive){
-    // Mantido internamente
-}
+function atualizarStatus(isLive){}
 
 function mostrarErro(msg){
     var box = document.getElementById("errorBox");
@@ -202,23 +200,25 @@ function receberMidia(url, tempoInicial, isStandby){
     limparMidia();
 
     if (isStandby) {
-        // Modo Standby: Toca o vídeo em mudo e a música MP3 sincronizados
         tipoAtual = "standby";
         mostrarVideo();
         
-        mediaVideo.muted = true; // Vídeo sem som
+        mediaVideo.muted = true; 
+        mediaVideo.loop = true; // Garante loop nativo no standby
         mediaVideo.src = STANDBY_VIDEO_URL;
         mediaVideo.load();
         mediaVideo.play().catch(function(){});
 
+        mediaAudio.loop = true; // Garante loop nativo no áudio do standby
         mediaAudio.src = STANDBY_AUDIO_URL;
         mediaAudio.load();
         mediaAudio.play().catch(function(){});
         return;
     }
 
-    // Comportamento normal para mídias normais (restaura o áudio do vídeo)
+    // Mídia normal (desativa o loop do standby)
     mediaVideo.muted = false;
+    mediaVideo.loop = false; 
     var urlLimpa = url.split('?')[0].toLowerCase();
 
     if (urlLimpa.endsWith('.m3u8')) {
@@ -320,7 +320,6 @@ function iniciarVideo(tempoInicial){
     }
 }
 
-// SINCRONIZAÇÃO COMPLETA DE ESTADO (Vinda do Servidor via HTTP ou WebSocket)
 function aplicarEstado(dados) {
     var isStandby = dados.modoStandby === true;
     var url = "";
@@ -335,7 +334,6 @@ function aplicarEstado(dados) {
     }
 
     if (url) {
-        // Se mudou o estado de standby ou a URL da mídia, atualiza
         if (url !== urlAtual || isStandby !== emModoStandbyAnterior) {
             emModoStandbyAnterior = isStandby;
             receberMidia(url, dados.currentTime || 0, isStandby);
@@ -350,7 +348,6 @@ function aplicarEstado(dados) {
         }
     }
 
-    // 2. Controle de Reprodução (Play / Pause)
     if (mediaVideo) {
         var isPlaying = (dados.playing !== undefined) ? dados.playing : dados.reproduzindo;
 
@@ -362,11 +359,9 @@ function aplicarEstado(dados) {
             if(isStandby && mediaAudio.paused) mediaAudio.play().catch(function(){});
         }
 
-        // Volume e Mute
         if (dados.volume !== undefined && !isStandby) { mediaVideo.volume = dados.volume / 100; }
         if (dados.mudo !== undefined && !isStandby) { mediaVideo.muted = dados.mudo; }
 
-        // Tratamento de comandos de salto de tempo (Avançar/Voltar/Seek direto)
         if (dados.comandoId && dados.comandoId !== ultimoComandoIdProcessado && !isStandby) {
             ultimoComandoIdProcessado = dados.comandoId;
             
@@ -381,7 +376,6 @@ function aplicarEstado(dados) {
     }
 }
 
-// CONEXÃO WEBSOCKET EM TEMPO REAL PARA RESPOSTA INSTANTÂNEA AOS CONTROLES
 function conectarWebSocket() {
     var ws = new WebSocket(WS_URL);
 
@@ -398,7 +392,6 @@ function conectarWebSocket() {
 }
 conectarWebSocket();
 
-// POLLING DE SEGURANÇA
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
     xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
@@ -421,6 +414,7 @@ function verificarServidor(){
 }
 verificarServidor();
 
+// Proteção rigorosa no onended para o standby nunca disparar o próximo vídeo
 mediaVideo.onended = function(){ 
     if(!emModoStandbyAnterior) {
         enviarComando("next"); 
