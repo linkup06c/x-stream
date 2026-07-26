@@ -14,7 +14,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Estado Mestre Central com Fila baseada em índices (Mantém histórico para voltar/avançar)
+// Defina aqui a URL do vídeo/música padrão do modo Standby
+const STANDBY_URL = "URL_DO_VIDEO_OU_MUSICA_STANDBY_AQUI"; 
+
+// Estado Mestre Central com Fila e Suporte a Standby
 let masterState = {
   video: null,          
   ativo: false,         
@@ -28,7 +31,8 @@ let masterState = {
   ultimoComando: null,
   comandoId: 0,
   fila: [],
-  atual: 0
+  atual: 0,
+  modoStandby: false
 };
 
 function getCurrentPosition() {
@@ -42,7 +46,7 @@ function getCurrentPosition() {
 // Disparador otimizado via WebSocket
 function broadcastState(acaoExtra = null) {
   const currentPos = getCurrentPosition();
-  
+
   if (masterState.playing && masterState.video) {
     masterState.currentTime = currentPos;
     masterState.updatedAt = Date.now();
@@ -64,6 +68,30 @@ function broadcastState(acaoExtra = null) {
   });
 }
 
+// Verifica e gerencia o modo Standby automaticamente
+function verificarStandby() {
+  const temItensNaFila = Array.isArray(masterState.fila) && masterState.fila.length > 0;
+  const dentroDoIndice = temItensNaFila && masterState.atual < masterState.fila.length;
+
+  if (!temItensNaFila || !dentroDoIndice) {
+    // Entra em modo Standby se não houver mídias válidas para tocar
+    masterState.modoStandby = true;
+    masterState.video = STANDBY_URL;
+    masterState.ativo = true;
+    masterState.playing = true;
+    masterState.reproduzindo = true;
+    masterState.currentTime = 0;
+  } else {
+    // Sai do modo Standby e assume o item atual da fila
+    masterState.modoStandby = false;
+    const itemAtual = masterState.fila[masterState.atual];
+    masterState.video = itemAtual.url || itemAtual;
+    masterState.ativo = true;
+    masterState.playing = true;
+    masterState.reproduzindo = true;
+  }
+}
+
 // Rota HTTP Polling usada pela Smart TV
 app.get('/status', (req, res) => {
   const currentPos = getCurrentPosition();
@@ -77,23 +105,19 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Envio de nova mídia (Adiciona na fila mantendo o histórico intacto)
+// Envio de nova mídia (Adiciona na fila SEM reiniciar o vídeo atual caso já esteja tocando)
 app.post('/enviar', (req, res) => {
   const url = req.body.url;
   const titulo = req.body.titulo || `Mídia ${masterState.fila.length + 1}`;
-  
+
   if (url) {
     const itemMidia = { id: Date.now().toString(), url: url, titulo: titulo };
     masterState.fila.push(itemMidia);
 
-    // Se estiver vazio ou parado, começa a reproduzir o item adicionado
-    if (!masterState.video || masterState.fila.length === 1) {
+    // Se estava em Standby ou sem vídeo ativo, começa a reproduzir o item novo imediatamente
+    if (masterState.modoStandby || !masterState.video || !masterState.ativo) {
       masterState.atual = masterState.fila.length - 1;
-      masterState.video = url;
-      masterState.ativo = true;
-      masterState.playing = true;
-      masterState.reproduzindo = true;
-      masterState.currentTime = 0;
+      verificarStandby();
     }
 
     masterState.updatedAt = Date.now();
@@ -118,8 +142,7 @@ app.post('/controle', (req, res) => {
     switch (slink) {
       case 'play':
         if (!masterState.video && masterState.fila.length > 0) {
-          masterState.video = masterState.fila[masterState.atual].url || masterState.fila[masterState.atual];
-          masterState.currentTime = 0;
+          verificarStandby();
         }
         if (!masterState.video) break;
         masterState.playing = true;
@@ -140,11 +163,9 @@ app.post('/controle', (req, res) => {
 
       case 'power':
       case 'stop':
-        masterState.video = null;
-        masterState.ativo = false;
-        masterState.playing = false;
-        masterState.reproduzindo = false;
-        masterState.currentTime = 0;
+        masterState.fila = [];
+        masterState.atual = 0;
+        verificarStandby(); // Volta para o standby ao parar tudo
         break;
 
       case 'clear':
@@ -156,6 +177,7 @@ app.post('/controle', (req, res) => {
         masterState.currentTime = 0;
         masterState.fila = [];
         masterState.atual = 0;
+        verificarStandby(); // Volta para o standby ao limpar
         break;
 
       // Avançar 15 segundos
@@ -194,38 +216,32 @@ app.post('/controle', (req, res) => {
         masterState.seek = 0;
         break;
 
-      // Próximo na Fila (Avança o índice mantendo a lista salva para permitir o botão "Voltar")
+      // Próximo na Fila
       case 'next':
       case 'proximo_video':
         if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
           if (masterState.atual < masterState.fila.length - 1) {
             masterState.atual++;
-            const proximoItem = masterState.fila[masterState.atual];
-            masterState.video = proximoItem.url || proximoItem;
+            verificarStandby();
             masterState.currentTime = 0;
-            masterState.playing = true;
-            masterState.reproduzindo = true;
           } else {
-            // Se chegou ao fim da fila, desativa mantendo os itens salvos no histórico
-            masterState.video = null;
-            masterState.ativo = false;
-            masterState.playing = false;
-            masterState.reproduzindo = false;
+            // Fim da fila: ativa o modo Standby
+            masterState.atual = masterState.fila.length;
+            verificarStandby();
           }
+        } else {
+          verificarStandby();
         }
         break;
 
-      // Anterior na Fila (Volta para o vídeo anterior mantido no histórico da lista)
+      // Anterior na Fila
       case 'prev':
       case 'previous':
         if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
           if (masterState.atual > 0) {
             masterState.atual--;
-            const itemAnterior = masterState.fila[masterState.atual];
-            masterState.video = itemAnterior.url || itemAnterior;
+            verificarStandby();
             masterState.currentTime = 0;
-            masterState.playing = true;
-            masterState.reproduzindo = true;
           }
         }
         break;
@@ -248,6 +264,11 @@ app.post('/controle', (req, res) => {
 
 // WebSocket para o Player / Clientes
 wss.on('connection', (ws) => {
+  // Se conectar e não houver nada na fila, garante que o standby inicie ativado
+  if (masterState.fila.length === 0 && !masterState.video) {
+    verificarStandby();
+  }
+
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
     ...masterState,
@@ -276,5 +297,5 @@ app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor X-Stream rodando na porta ${PORT} (Fila com Histórico para Botão Voltar)`);
+  console.log(`Servidor X-Stream rodando na porta ${PORT} (Com Fila, Histórico e Modo Standby Automático)`);
 });
