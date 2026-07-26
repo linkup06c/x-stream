@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Estado Mestre Central
+// Estado Mestre Central com Fila Aprimorada
 let masterState = {
   video: null,          
   ativo: false,         
@@ -78,16 +78,28 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Envio de nova mídia
+// Envio de nova mídia (Adiciona na fila mantendo a lógica de fila contínua)
 app.post('/enviar', (req, res) => {
   const url = req.body.url;
+  const titulo = req.body.titulo || `Mídia ${masterState.fila.length + 1}`;
+  
   if (url) {
-    masterState.video = url;
-    masterState.ativo = true;
-    masterState.playing = true;
-    masterState.reproduzindo = true;
-    masterState.currentTime = 0;
+    const itemMidia = { id: Date.now().toString(), url: url, titulo: titulo };
+    masterState.fila.push(itemMidia);
+
+    // Se estiver vazio ou parado, começa a reproduzir imediatamente o item adicionado
+    if (!masterState.video || masterState.fila.length === 1) {
+      masterState.atual = masterState.fila.length - 1;
+      masterState.video = url;
+      masterState.ativo = true;
+      masterState.playing = true;
+      masterState.reproduzindo = true;
+      masterState.currentTime = 0;
+    }
+
     masterState.updatedAt = Date.now();
+    masterState.ultimoComando = "enviar";
+    masterState.comandoId = masterState.updatedAt;
     broadcastState("play");
   }
   res.json({ success: true, state: masterState });
@@ -107,6 +119,10 @@ app.post('/controle', (req, res) => {
 
     switch (slink) {
       case 'play':
+        if (!masterState.video && masterState.fila.length > 0) {
+          masterState.video = masterState.fila[masterState.atual].url || masterState.fila[masterState.atual];
+          masterState.currentTime = 0;
+        }
         if (!masterState.video) break;
         masterState.playing = true;
         masterState.reproduzindo = true;
@@ -144,7 +160,7 @@ app.post('/controle', (req, res) => {
         masterState.atual = 0;
         break;
 
-      // CORRIGIDO: Avançar 15 segundos
+      // Avançar 15 segundos
       case 'forward':
       case 'avancar_15':
       case 'forward_15':
@@ -154,7 +170,7 @@ app.post('/controle', (req, res) => {
         }
         break;
 
-      // CORRIGIDO: Voltar 15 segundos
+      // Voltar 15 segundos
       case 'rewind':
       case 'voltar_15':
       case 'rewind_15':
@@ -180,20 +196,30 @@ app.post('/controle', (req, res) => {
         masterState.seek = 0;
         break;
 
-      // CORRIGIDO: Próximo na Fila
+      // Próximo na Fila (Consome o item anterior da fila exatamente como o outro servidor)
       case 'next':
+      case 'proximo_video':
         if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
-          if (masterState.atual < masterState.fila.length - 1) {
-            masterState.atual++;
-            masterState.video = masterState.fila[masterState.atual].url || masterState.fila[masterState.atual];
-            masterState.currentTime = 0;
+          masterState.fila.shift(); // Remove o vídeo antigo/reproduzido
+          masterState.currentTime = 0;
+          masterState.updatedAt = Date.now();
+
+          if (masterState.fila.length > 0) {
+            masterState.atual = 0;
+            masterState.video = masterState.fila[0].url || masterState.fila[0];
             masterState.playing = true;
             masterState.reproduzindo = true;
+          } else {
+            masterState.video = null;
+            masterState.ativo = false;
+            masterState.playing = false;
+            masterState.reproduzindo = false;
+            masterState.atual = 0;
           }
         }
         break;
 
-      // CORRIGIDO: Anterior na Fila
+      // Anterior na Fila
       case 'prev':
       case 'previous':
         if (Array.isArray(masterState.fila) && masterState.fila.length > 0) {
@@ -226,7 +252,7 @@ app.post('/controle', (req, res) => {
   res.json({ success: true, state: masterState });
 });
 
-// WebSocket para o Player Secundário / WebSoft
+// WebSocket para o Player / Clientes
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify({
     tipo: "sync-transmission",
@@ -256,5 +282,5 @@ app.get(['/', '/smart-tv', '/smart-tv.html'], (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor X-Stream rodando na porta ${PORT} (Modo de Alta Responsividade)`);
+  console.log(`Servidor X-Stream rodando na porta ${PORT} (Com Fila Integrada)`);
 });
