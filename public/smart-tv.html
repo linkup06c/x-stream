@@ -22,7 +22,8 @@ html, body {
     user-select: none;
 }
 
-#mediaVideo {
+/* Dois vídeos de standby para alternância suave sem engasgos */
+#mediaVideo, #mediaVideo2 {
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%;
     background: #000; 
@@ -43,7 +44,6 @@ html, body {
     display: none; z-index: 15;
 }
 
-/* LOGO NO CANTO INFERIOR ESQUERDO (TAMANHO REDUZIDO) */
 #brandLogo {
     position: fixed;
     bottom: 20px;
@@ -57,37 +57,20 @@ html, body {
 }
 
 #cursorLayer{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-z-index:99999;
-color:transparent;
-background:transparent;
-user-select:text;
--webkit-user-select:text;
-cursor:text;
+position:fixed; top:0; left:0; width:100%; height:100%;
+z-index:99999; color:transparent; background:transparent;
+user-select:text; -webkit-user-select:text; cursor:text;
 }
 
 #keyDebug {
-    position: fixed;
-    top: 25px;
-    right: 25px;
-    z-index: 99999;
-    background: rgba(0, 0, 0, 0.7);
-    color: #00ff66;
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-family: monospace;
-    display: none;
-    border: 1px solid rgba(0, 255, 102, 0.3);
+    position: fixed; top: 25px; right: 25px; z-index: 99999;
+    background: rgba(0, 0, 0, 0.7); color: #00ff66;
+    padding: 6px 14px; border-radius: 8px; font-size: 12px;
+    font-family: monospace; display: none; border: 1px solid rgba(0, 255, 102, 0.3);
 }
 
 #errorBox {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%; background: #000;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000;
     display: none; align-items: center; justify-content: center;
     flex-direction: column; text-align: center; z-index: 20000;
 }
@@ -99,18 +82,15 @@ cursor:text;
 
 <body>
 
-<div id="cursorLayer">
-Texto de teste invisível
-</div>
-
-<!-- LOGO NO CANTO INFERIOR ESQUERDO -->
+<div id="cursorLayer">Texto de teste invisível</div>
 <img id="brandLogo" src="logo.png">
-
-<!-- DIAGNÓSTICO DE TECLAS DA TV -->
 <div id="keyDebug">TECLA: -</div>
 
+<!-- Sistema de Vídeo Duplo para transição perfeita em TVs -->
 <video id="mediaVideo" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
-<audio id="mediaAudio" autoplay preload="auto"></audio>
+<video id="mediaVideo2" autoplay playsinline webkit-playsinline preload="auto" crossorigin="anonymous"></video>
+
+<audio id="mediaAudio" autoplay preload="auto" loop></audio>
 <img id="mediaImage">
 
 <div id="errorBox">
@@ -134,10 +114,11 @@ var wsProtocol = SERVER_URL.startsWith("https") ? "wss://" : "ws://";
 var WS_URL = wsProtocol + SERVER_URL.replace(/^https?:\/\//, '');
 
 var mediaVideo = document.getElementById("mediaVideo");
+var mediaVideo2 = document.getElementById("mediaVideo2");
 var mediaAudio = document.getElementById("mediaAudio");
 var mediaImage = document.getElementById("mediaImage");
-var keyDebug = document.getElementById("keyDebug");
 
+var activeVideoSlot = 1; // Alterna entre 1 e 2 no standby
 var tipoAtual = "";
 var urlAtual = "";
 var ultimaURL = "";
@@ -145,8 +126,6 @@ var hlsPlayer = null;
 var tempoInicialAjustado = false;
 var ultimoComandoIdProcessado = 0;
 var emModoStandbyAnterior = false;
-
-function atualizarStatus(){}
 
 function mostrarErro(msg){
     var box = document.getElementById("errorBox");
@@ -161,27 +140,13 @@ function limparMidia(){
     tempoInicialAjustado = false;
 
     if (hlsPlayer) {
-        try {
-            hlsPlayer.destroy();
-            hlsPlayer = null;
-        } catch(e){}
+        try { hlsPlayer.destroy(); hlsPlayer = null; } catch(e){}
     }
 
-    try {
-        mediaVideo.pause();
-        mediaVideo.removeAttribute("src");
-        mediaVideo.load();
-    } catch(e){}
-
-    try {
-        mediaAudio.pause();
-        mediaAudio.removeAttribute("src");
-        mediaAudio.load();
-    } catch(e){}
-
-    try {
-        mediaImage.removeAttribute("src");
-    } catch(e){}
+    try { mediaVideo.pause(); mediaVideo.removeAttribute("src"); mediaVideo.load(); } catch(e){}
+    try { mediaVideo2.pause(); mediaVideo2.removeAttribute("src"); mediaVideo2.load(); } catch(e){}
+    try { mediaAudio.pause(); mediaAudio.removeAttribute("src"); mediaAudio.load(); } catch(e){}
+    try { mediaImage.removeAttribute("src"); } catch(e){}
 }
 
 function receberMidia(url, tempoInicial, isStandby){
@@ -200,16 +165,7 @@ function receberMidia(url, tempoInicial, isStandby){
 
     if (isStandby) {
         tipoAtual = "standby";
-        mostrarVideo();
-        
-        mediaVideo.muted = true; 
-        mediaVideo.src = STANDBY_VIDEO_URL;
-        mediaVideo.load();
-        mediaVideo.play().catch(function(){});
-
-        mediaAudio.src = STANDBY_AUDIO_URL;
-        mediaAudio.load();
-        mediaAudio.play().catch(function(){});
+        iniciarStandbyDuplo();
         return;
     }
 
@@ -222,6 +178,55 @@ function receberMidia(url, tempoInicial, isStandby){
         tentarVideo(url, tempoInicial);
     }
 }
+
+// Lógica de revezamento suave sem travamentos para TVs
+function iniciarStandbyDuplo() {
+    mediaVideo.style.display = "block";
+    mediaVideo2.style.display = "none";
+    mediaImage.style.display = "none";
+    mediaAudio.style.display = "none";
+
+    mediaVideo.muted = true;
+    mediaVideo.src = STANDBY_VIDEO_URL;
+    mediaVideo.load();
+    mediaVideo.play().catch(function(){});
+
+    mediaVideo2.muted = true;
+    mediaVideo2.src = STANDBY_VIDEO_URL;
+    mediaVideo2.load();
+
+    mediaAudio.src = STANDBY_AUDIO_URL;
+    mediaAudio.load();
+    mediaAudio.play().catch(function(){});
+}
+
+// Quando o slot 1 está acabando, troca instantaneamente para o slot 2 já pre-carregado
+mediaVideo.ontimeupdate = function() {
+    if (emModoStandbyAnterior && mediaVideo.duration && !isNaN(mediaVideo.duration)) {
+        if (mediaVideo.duration - mediaVideo.currentTime < 0.4 && activeVideoSlot === 1) {
+            activeVideoSlot = 2;
+            mediaVideo2.currentTime = 0;
+            mediaVideo2.play().catch(function(){});
+            mediaVideo2.style.display = "block";
+            mediaVideo.style.display = "none";
+            mediaVideo.pause();
+        }
+    }
+};
+
+// Quando o slot 2 está acabando, troca instantaneamente de volta para o slot 1
+mediaVideo2.ontimeupdate = function() {
+    if (emModoStandbyAnterior && mediaVideo2.duration && !isNaN(mediaVideo2.duration)) {
+        if (mediaVideo2.duration - mediaVideo2.currentTime < 0.4 && activeVideoSlot === 2) {
+            activeVideoSlot = 1;
+            mediaVideo.currentTime = 0;
+            mediaVideo.play().catch(function(){});
+            mediaVideo.style.display = "block";
+            mediaVideo2.style.display = "none";
+            mediaVideo2.pause();
+        }
+    }
+};
 
 function tentarHLS(url, tempoInicial) {
     if (Hls.isSupported()) {
@@ -264,10 +269,10 @@ function tentarVideo(url, tempoInicial){
 
     mediaVideo.onloadeddata = ativarVideo;
     mediaVideo.oncanplay = ativarVideo;
-    mediaVideo.onerror = function(){ if(!confirmado) tentarAudio(url); };
+    mediaVideo.onerror = function(){ if(!confirmado) tentarAudioFila(url); };
 }
 
-function tentarAudio(url){
+function tentarAudioFila(url){
     var confirmado = false;
     mediaAudio.src = url;
     mediaAudio.load();
@@ -294,12 +299,13 @@ function tentarImagem(url){
 
 function esconderTodos(){
     mediaVideo.style.display = "none";
+    mediaVideo2.style.display = "none";
     mediaAudio.style.display = "none";
     mediaImage.style.display = "none";
 }
 
 function mostrarVideo(){ esconderTodos(); mediaVideo.style.display = "block"; }
-function mostrarImagem(){ esconderTodos(); mediaImage.style.display = "block"; }
+function mostrarImage(){ esconderTodos(); mediaImage.style.display = "block"; }
 
 function iniciarVideo(tempoInicial){
     if(tempoInicial && !tempoInicialAjustado){
@@ -348,10 +354,10 @@ function aplicarEstado(dados) {
 
         if (isPlaying === false && !mediaVideo.paused) {
             mediaVideo.pause();
+            mediaVideo2.pause();
             if(!mediaAudio.paused) mediaAudio.pause();
-        } else if (isPlaying === true && mediaVideo.paused) {
+        } else if (isPlaying === true && mediaVideo.paused && !emModoStandbyAnterior) {
             mediaVideo.play().catch(function(){});
-            if(isStandby && mediaAudio.paused) mediaAudio.play().catch(function(){});
         }
 
         if (dados.volume !== undefined && !isStandby) { mediaVideo.volume = dados.volume / 100; }
@@ -373,24 +379,19 @@ function aplicarEstado(dados) {
 
 function conectarWebSocket() {
     var ws = new WebSocket(WS_URL);
-
     ws.onmessage = function(event) {
         try {
             var dados = JSON.parse(event.data);
             aplicarEstado(dados);
         } catch(e){}
     };
-
-    ws.onclose = function() {
-        setTimeout(conectarWebSocket, 3000);
-    };
+    ws.onclose = function() { setTimeout(conectarWebSocket, 3000); };
 }
 conectarWebSocket();
 
 function verificarServidor(){
     var xhr = new XMLHttpRequest();
     xhr.open("GET", SERVER_URL + "/status?t=" + Date.now(), true);
-
     xhr.onreadystatechange = function(){
         if(xhr.readyState === 4){
             if(xhr.status === 200){
@@ -402,44 +403,13 @@ function verificarServidor(){
             setTimeout(verificarServidor, 3000);
         }
     };
-    xhr.onerror = function() { 
-        setTimeout(verificarServidor, 3000); 
-    };
+    xhr.onerror = function() { setTimeout(verificarServidor, 3000); };
     xhr.send();
 }
 verificarServidor();
 
-// Loop suave preventivo para eliminar o engasgo no fim do vídeo/áudio do standby
-mediaVideo.ontimeupdate = function() {
-    if (emModoStandbyAnterior && mediaVideo.duration && !isNaN(mediaVideo.duration)) {
-        // Se faltar menos de 0.3 segundos para acabar, ele joga pro início suavemente sem travar
-        if (mediaVideo.duration - mediaVideo.currentTime < 0.3) {
-            mediaVideo.currentTime = 0;
-            mediaVideo.play().catch(function(){});
-        }
-    }
-};
-
-mediaAudio.ontimeupdate = function() {
-    if (emModoStandbyAnterior && mediaAudio.duration && !isNaN(mediaAudio.duration)) {
-        if (mediaAudio.duration - mediaAudio.currentTime < 0.3) {
-            mediaAudio.currentTime = 0;
-            mediaAudio.play().catch(function(){});
-        }
-    }
-};
-
 mediaVideo.onended = function(){ 
-    if(!emModoStandbyAnterior) {
-        enviarComando("next"); 
-    }
-};
-
-mediaAudio.onended = function(){
-    if (emModoStandbyAnterior) {
-        mediaAudio.currentTime = 0;
-        mediaAudio.play().catch(function(){});
-    }
+    if(!emModoStandbyAnterior) { enviarComando("next"); }
 };
 
 function enviarComando(slink){
